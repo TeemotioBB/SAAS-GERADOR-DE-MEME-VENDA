@@ -3,9 +3,25 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="ViraPost">
+  <meta property="og:description" content="Cole o link do Reel e gere o vídeo pronto para sua página.">
+  <meta property="og:url" content="https://app.virapost.site/">
+  <meta property="og:image" content="https://app.virapost.site/static/virapost-share.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="ViraPost">
+  <meta name="twitter:description" content="Cole o link do Reel e gere o vídeo pronto para sua página.">
+  <meta name="twitter:image" content="https://app.virapost.site/static/virapost-share.png">
+
   <meta name="theme-color" content="#ffffff">
   <meta name="csrf-token" content="{{ csrf_token() }}">
+
   <title>{% block title %}{{ config.APP_NAME }}{% endblock %}</title>
+
   <link rel="stylesheet" href="{{ url_for('static', filename='styles.css', v='1.8.2') }}">
 </head>
 <body class="{% if current_user.is_authenticated %}app-authenticated{% endif %}">
