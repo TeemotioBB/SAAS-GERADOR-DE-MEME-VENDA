@@ -1,8 +1,0 @@
-[phases.setup]
-nixPkgs = ["python312", "ffmpeg", "fontconfig"]
-
-[phases.install]
-cmds = ["python -m venv /opt/venv", ". /opt/venv/bin/activate && pip install --upgrade pip && pip install -r requirements.txt"]
-
-[start]
-cmd = "gunicorn app:app --bind 0.0.0.0:$PORT --worker-class gthread --workers 2 --threads 4 --timeout 120 --graceful-timeout 30 --keep-alive 5 --access-logfile - --error-logfile -"
