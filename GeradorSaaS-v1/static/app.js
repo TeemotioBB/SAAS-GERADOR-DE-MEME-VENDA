@@ -12,15 +12,18 @@
   const importStatus = document.getElementById('importStatus');
   const videoFiles = document.getElementById('videoFiles');
   const uploadStatus = document.getElementById('uploadStatus');
+  const dropZone = document.querySelector('.drop-zone');
   const generateAllBtn = document.getElementById('generateAllBtn');
   const downloadZipBtn = document.getElementById('downloadZipBtn');
   const usageCount = document.getElementById('usageCount');
+  const usageTrack = document.querySelector('.usage-track span');
   const generationModal = document.getElementById('generationModal');
   const generationModalTitle = document.getElementById('generationModalTitle');
   const generationModalMessage = document.getElementById('generationModalMessage');
   const generationModalStatus = document.getElementById('generationModalStatus');
   const generationModalIcon = document.getElementById('generationModalIcon');
   const generationModalAction = document.getElementById('generationModalAction');
+  const workspace = document.getElementById('workspace');
 
   const jobs = new Map();
   const drafts = new Map();
@@ -56,23 +59,44 @@
   }
 
   const statusLabel = status => ({
-    queued:'Na fila', importing:'Importando', analyzing:'Analisando', ready:'Pronto',
-    rendering:'Gerando', done:'Concluído', error:'Erro'
+    queued:'Na fila', importing:'Importando', analyzing:'Preparando', ready:'Pronto para gerar',
+    rendering:'Gerando', done:'Concluído', error:'Precisa de atenção'
   }[status] || status);
 
   function escapeHtml(value='') {
     return String(value).replace(/[&<>'"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch]));
   }
 
+  function setStatus(element, message='', tone='') {
+    if (!element) return;
+    element.textContent = message;
+    element.classList.remove('success','error','loading');
+    if (tone) element.classList.add(tone);
+  }
+
+  function notify(message, tone='info') {
+    let stack = document.querySelector('.toast-stack');
+    if (!stack) {
+      stack = document.createElement('div');
+      stack.className = 'toast-stack';
+      stack.setAttribute('aria-live', 'polite');
+      document.body.appendChild(stack);
+    }
+    const toast = document.createElement('div');
+    toast.className = `toast ${tone}`;
+    toast.textContent = message;
+    stack.appendChild(toast);
+    requestAnimationFrame(() => toast.classList.add('show'));
+    setTimeout(() => {
+      toast.classList.remove('show');
+      setTimeout(() => toast.remove(), 220);
+    }, 3600);
+  }
+
   function frameStyle(job) {
     const w = Number(job.width || 0);
     const h = Number(job.height || 0);
     if (!w || !h) return '';
-
-    // IMPORTANTE: o elemento que recebe a caixa de recorte precisa ter
-    // exatamente a mesma proporção do frame analisado. Na primeira versão
-    // SaaS a caixa era posicionada contra o card inteiro; em vídeos verticais
-    // isso criava barras laterais e deslocava visualmente o crop.
     const maxPreviewHeight = 430;
     const widthAtMaxHeight = maxPreviewHeight * (w / h);
     return `aspect-ratio:${w}/${h};width:min(100%,${widthAtMaxHeight.toFixed(2)}px);`;
@@ -83,12 +107,42 @@
     return `left:${crop.x/job.width*100}%;top:${crop.y/job.height*100}%;width:${crop.w/job.width*100}%;height:${crop.h/job.height*100}%;`;
   }
 
+  function updateFlowState(list) {
+    const steps = [...document.querySelectorAll('[data-flow-step]')];
+    const lines = [...document.querySelectorAll('.flow-line')];
+    steps.forEach(s => s.classList.remove('active','complete'));
+    lines.forEach(l => l.classList.remove('complete'));
+
+    if (!list.length) {
+      steps[0]?.classList.add('active');
+      return;
+    }
+
+    steps[0]?.classList.add('complete');
+    lines[0]?.classList.add('complete');
+
+    const anyGenerating = list.some(j => ['queued','rendering'].includes(j.status));
+    const anyDone = list.some(j => j.status === 'done');
+    const allFinished = list.length > 0 && list.every(j => ['done','error'].includes(j.status));
+
+    if (anyGenerating || anyDone) {
+      steps[1]?.classList.add('complete');
+      lines[1]?.classList.add('complete');
+      if (allFinished && !list.some(j => j.status === 'error')) steps[2]?.classList.add('complete');
+      else steps[2]?.classList.add('active');
+    } else {
+      steps[1]?.classList.add('active');
+    }
+  }
+
   function renderJobs() {
     const list = [...jobs.values()].sort((a,b) => (b.created_at || '').localeCompare(a.created_at || ''));
     jobsGrid.innerHTML = '';
     emptyState.classList.toggle('hidden', list.length > 0);
+    root.classList.toggle('has-jobs', list.length > 0);
+    updateFlowState(list);
 
-    list.forEach(job => {
+    list.forEach((job, index) => {
       const d = ensureDraft(job);
       const card = document.createElement('article');
       card.className = 'job-card';
@@ -96,44 +150,67 @@
       const canEdit = ['ready','done','error'].includes(job.status) && !!job.has_frame;
       const canRender = canEdit;
       const hasResult = !!job.has_result;
+      const isWorking = ['queued','importing','analyzing','rendering'].includes(job.status);
 
       card.innerHTML = `
         <div class="job-head">
-          <div class="job-name" title="${escapeHtml(job.original_name)}">${escapeHtml(job.original_name)}</div>
+          <div class="job-title-wrap">
+            <span class="job-number">${String(index + 1).padStart(2,'0')}</span>
+            <div class="job-name" title="${escapeHtml(job.original_name)}">${escapeHtml(job.original_name)}</div>
+          </div>
           <span class="status-chip ${escapeHtml(job.status)}">${escapeHtml(statusLabel(job.status))}</span>
         </div>
         <div class="job-body">
-          ${job.has_frame ? `
-            <div class="frame-wrap" style="${frameStyle(job)}">
-              <img src="/api/jobs/${job.id}/frame?v=${encodeURIComponent(job.updated_at || '')}" alt="Frame">
-              ${d.crop && job.width && job.height ? `<div class="crop-box" style="${cropStyle(job,d.crop)}"><div class="crop-handle"></div></div>` : ''}
-              <span class="confidence">recorte ${Math.round((job.confidence || 0)*100)}%</span>
-            </div>` : `<div class="frame-wrap placeholder-wrap"><div class="frame-placeholder">${job.status === 'error' ? 'Não foi possível preparar este vídeo.' : 'Preparando vídeo…'}</div></div>`}
-          ${job.error ? `<div class="job-error">${escapeHtml(job.error)}</div>` : ''}
-          ${hasResult ? `<video class="result-preview" controls preload="metadata" src="/api/jobs/${job.id}/preview?v=${encodeURIComponent(`${job.generation_count || 0}-${job.updated_at || ''}`)}"></video>` : ''}
-          <textarea class="job-caption" placeholder="Chamada do vídeo (opcional)" ${canEdit?'':'disabled'}>${escapeHtml(d.caption)}</textarea>
-          <div class="job-options">
-            <label class="option-toggle" title="Remove tags e metadados embutidos do MP4 final">
-              <input class="metadata-check" type="checkbox" ${d.removeMetadata?'checked':''}>
-              <span>🧹 Remover metadados</span>
-            </label>
-            <label class="option-toggle" title="Aplica pequenas variações visuais: cor, grão, vinheta, zoom, crop leve e velocidade">
-              <input class="extras-check" type="checkbox" ${d.extraEdits?'checked':''}>
-              <span>✨ Edições extras</span>
-            </label>
-            <label class="option-toggle" title="Espelha somente o vídeo. Evite ativar quando houver texto visível dentro do vídeo">
-              <input class="mirror-check" type="checkbox" ${d.mirrorVideo?'checked':''}>
-              <span>↔️ Espelhar vídeo</span>
-            </label>
-            ${hasLogo ? `<label class="option-toggle"><input class="logo-check" type="checkbox" ${d.useLogo?'checked':''}><span>🏷️ Logo</span></label>` : ''}
+          <div class="job-media-column">
+            <span class="media-label">${hasResult ? 'Recorte detectado' : 'Prévia e recorte'}</span>
+            ${job.has_frame ? `
+              <div class="frame-wrap" style="${frameStyle(job)}">
+                <img src="/api/jobs/${job.id}/frame?v=${encodeURIComponent(job.updated_at || '')}" alt="Frame do vídeo">
+                ${d.crop && job.width && job.height ? `<div class="crop-box" style="${cropStyle(job,d.crop)}"><div class="crop-handle"></div></div>` : ''}
+                <span class="confidence">Recorte ${Math.round((job.confidence || 0)*100)}%</span>
+              </div>` : `<div class="frame-wrap placeholder-wrap"><div class="frame-placeholder">${job.status === 'error' ? 'Não foi possível preparar este vídeo.' : 'Preparando o vídeo…'}</div></div>`}
+            ${hasResult ? `<div class="result-block"><span class="media-label">Resultado gerado</span><video class="result-preview" controls preload="metadata" src="/api/jobs/${job.id}/preview?v=${encodeURIComponent(`${job.generation_count || 0}-${job.updated_at || ''}`)}"></video></div>` : ''}
           </div>
-          <div class="option-hint">Edições extras: cor, grão, vinheta, zoom, crop leve e pequena variação de velocidade. O espelhamento é separado para não inverter textos do vídeo.</div>
-          <div class="job-toolbar">
-            <button class="icon-btn reread" type="button" ${job.has_frame?'':'disabled'}>Reler texto</button>
-            <span class="spacer"></span>
-            ${hasResult ? `<a class="icon-btn" href="/api/jobs/${job.id}/download?v=${encodeURIComponent(`${job.generation_count || 0}-${job.updated_at || ''}`)}">Baixar</a>` : ''}
-            <button class="secondary generate-one" type="button" ${canRender?'':'disabled'}>${job.status === 'done' ? 'Gerar novamente' : 'Gerar vídeo'}</button>
-            <button class="icon-btn danger delete-one" type="button">Excluir</button>
+
+          <div class="job-controls-column">
+            ${job.error ? `<div class="job-error">${escapeHtml(job.error)}</div>` : ''}
+
+            <div class="editor-block">
+              <div class="editor-block-head">
+                <div class="editor-block-title"><strong>Chamada do vídeo</strong><small>Opcional — pode gerar sem texto.</small></div>
+                <button class="text-button reread" type="button" ${job.has_frame?'':'disabled'}>${isWorking ? 'Aguardando…' : 'Reler texto'}</button>
+              </div>
+              <textarea class="job-caption" placeholder="Escreva a chamada ou deixe vazio" ${canEdit?'':'disabled'}>${escapeHtml(d.caption)}</textarea>
+            </div>
+
+            <div class="editor-block">
+              <div class="editor-block-head">
+                <div class="editor-block-title"><strong>Opções de geração</strong><small>Ajustes independentes para este vídeo.</small></div>
+              </div>
+              <div class="job-options">
+                <label class="option-toggle" title="Remove tags e metadados embutidos do MP4 final">
+                  <input class="metadata-check" type="checkbox" ${d.removeMetadata?'checked':''}>
+                  <span class="option-copy"><span>Remover metadados</span><small>Recomendado</small></span>
+                </label>
+                <label class="option-toggle" title="Aplica pequenas variações visuais: cor, grão, vinheta, zoom, crop leve e velocidade">
+                  <input class="extras-check" type="checkbox" ${d.extraEdits?'checked':''}>
+                  <span class="option-copy"><span>Edições extras</span><small>Cor, grão, zoom e mais</small></span>
+                </label>
+                <label class="option-toggle option-warning" title="Espelha somente o vídeo. Evite ativar quando houver texto visível dentro do vídeo">
+                  <input class="mirror-check" type="checkbox" ${d.mirrorVideo?'checked':''}>
+                  <span class="option-copy"><span>Espelhar vídeo</span><small>Cuidado com textos na imagem</small></span>
+                </label>
+                ${hasLogo ? `<label class="option-toggle"><input class="logo-check" type="checkbox" ${d.useLogo?'checked':''}><span class="option-copy"><span>Adicionar logo</span><small>Usa a logo da sua página</small></span></label>` : ''}
+              </div>
+              <div class="option-hint">O espelhamento é separado das edições extras para não inverter textos que já existem dentro do vídeo.</div>
+            </div>
+
+            <div class="job-toolbar">
+              <button class="icon-btn danger delete-one" type="button">Excluir</button>
+              <span class="spacer"></span>
+              ${hasResult ? `<a class="icon-btn download-btn" href="/api/jobs/${job.id}/download?v=${encodeURIComponent(`${job.generation_count || 0}-${job.updated_at || ''}`)}">Baixar vídeo</a>` : ''}
+              <button class="secondary generate-one" type="button" ${canRender?'':'disabled'}>${job.status === 'done' ? 'Gerar novamente' : isWorking ? 'Preparando…' : 'Gerar vídeo'}</button>
+            </div>
           </div>
         </div>`;
       jobsGrid.appendChild(card);
@@ -174,8 +251,6 @@
       (resize ? handle : box).setPointerCapture?.(pointerId);
 
       const move = e => {
-        // Usa a dimensão real exibida do frame. Isso evita diferença entre desktop,
-        // celular, zoom do navegador e cards responsivos.
         const rect = wrap.getBoundingClientRect();
         const scaleW = rect.width || startRect.width || 1;
         const scaleH = rect.height || startRect.height || 1;
@@ -274,10 +349,10 @@
       generationModal.classList.remove('is-error');
       if (generationModalTitle) generationModalTitle.textContent = tracked.length > 1 ? 'Vídeos prontos!' : 'Vídeo pronto!';
       if (generationModalMessage) generationModalMessage.textContent = tracked.length > 1
-        ? 'As gerações foram concluídas. Os botões de download já estão disponíveis nos vídeos.'
-        : 'A geração foi concluída. O botão de download já está disponível no vídeo.';
+        ? 'As gerações foram concluídas. Os botões de download já estão disponíveis.'
+        : 'A geração foi concluída. Seu vídeo já está disponível para baixar.';
       if (generationModalStatus) generationModalStatus.textContent = `${done}/${tracked.length} concluído${tracked.length > 1 ? 's' : ''}.`;
-      if (generationModalAction) generationModalAction.textContent = 'Fechar';
+      if (generationModalAction) generationModalAction.textContent = 'Ver resultado';
       if (generationModalIcon) generationModalIcon.textContent = '✓';
       return;
     }
@@ -305,8 +380,10 @@
 
   function hideGenerationModal() {
     if (!generationModal) return;
+    const done = generationModal.classList.contains('is-done');
     generationModal.classList.remove('is-open');
     generationModal.setAttribute('aria-hidden', 'true');
+    if (done) workspace?.scrollIntoView({behavior:'smooth', block:'start'});
   }
 
   generationModal?.querySelectorAll('[data-close-generation-modal]').forEach(el => el.addEventListener('click', hideGenerationModal));
@@ -316,38 +393,90 @@
     try {
       const data = await api('/api/usage');
       if (usageCount) usageCount.textContent = `${data.used} / ${data.limit}`;
+      if (usageTrack) {
+        const percent = data.limit ? Math.min(100, Math.max(0, data.used / data.limit * 100)) : 0;
+        usageTrack.style.width = `${percent}%`;
+      }
     } catch (_) {}
+  }
+
+  // Alterna entre link e upload sem mostrar dois caminhos ao mesmo tempo.
+  document.querySelectorAll('[data-source-tab]').forEach(tab => {
+    tab.addEventListener('click', () => {
+      const name = tab.dataset.sourceTab;
+      document.querySelectorAll('[data-source-tab]').forEach(btn => {
+        const active = btn === tab;
+        btn.classList.toggle('active', active);
+        btn.setAttribute('aria-selected', active ? 'true' : 'false');
+      });
+      document.querySelectorAll('[data-source-pane]').forEach(pane => {
+        const active = pane.dataset.sourcePane === name;
+        pane.classList.toggle('active', active);
+        pane.hidden = !active;
+      });
+      if (name === 'link') setTimeout(() => reelUrls?.focus(), 30);
+    });
+  });
+
+  function scrollToWorkspaceAfterAdd() {
+    setTimeout(() => workspace?.scrollIntoView({behavior:'smooth', block:'start'}), 160);
   }
 
   importBtn?.addEventListener('click', async () => {
     const urls = reelUrls.value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
-    if (!urls.length) { importStatus.textContent = 'Cole pelo menos um link.'; return; }
-    importBtn.disabled = true; importStatus.textContent = 'Adicionando à fila…';
+    if (!urls.length) { setStatus(importStatus, 'Cole pelo menos um link para continuar.', 'error'); reelUrls.focus(); return; }
+    importBtn.disabled = true;
+    importBtn.querySelector('span').textContent = urls.length > 1 ? 'Importando vídeos…' : 'Importando vídeo…';
+    setStatus(importStatus, 'Adicionando à fila…', 'loading');
     try {
       const data = await api('/api/jobs/import', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({urls})});
       data.jobs.forEach(j => jobs.set(j.id,j));
-      renderJobs(); schedulePoll(1200);
-      importStatus.textContent = data.errors?.length ? `${data.jobs.length} adicionados; ${data.errors.length} link(s) inválido(s).` : `${data.jobs.length} vídeo(s) adicionados.`;
+      renderJobs();
+      schedulePoll(1200);
+      if (data.errors?.length) setStatus(importStatus, `${data.jobs.length} adicionado(s) · ${data.errors.length} link(s) não puderam ser usados.`, 'error');
+      else setStatus(importStatus, `${data.jobs.length} vídeo(s) adicionado(s). Preparando análise…`, 'success');
       reelUrls.value = '';
-    } catch(e) { importStatus.textContent = e.message; }
-    finally { importBtn.disabled = false; }
+      scrollToWorkspaceAfterAdd();
+    } catch(e) {
+      setStatus(importStatus, e.message, 'error');
+    } finally {
+      importBtn.disabled = false;
+      importBtn.querySelector('span').textContent = 'Importar vídeos';
+    }
   });
 
-  videoFiles?.addEventListener('change', async () => {
-    const files = [...videoFiles.files];
-    if (!files.length) return;
-    let ok=0;
-    for (let i=0;i<files.length;i++) {
-      uploadStatus.textContent = `Enviando ${i+1}/${files.length}…`;
-      const fd = new FormData(); fd.append('video', files[i]);
+  async function uploadFiles(files) {
+    const fileList = [...files];
+    if (!fileList.length) return;
+    let ok = 0;
+    setStatus(uploadStatus, `Enviando 1 de ${fileList.length}…`, 'loading');
+    for (let i=0; i<fileList.length; i++) {
+      setStatus(uploadStatus, `Enviando ${i+1} de ${fileList.length}: ${fileList[i].name}`, 'loading');
+      const fd = new FormData();
+      fd.append('video', fileList[i]);
       try {
         const job = await api('/api/jobs/upload', {method:'POST', body:fd});
-        jobs.set(job.id,job); ok++; renderJobs();
-      } catch(e) { uploadStatus.textContent = `Falha em ${files[i].name}: ${e.message}`; }
+        jobs.set(job.id,job);
+        ok++;
+        renderJobs();
+      } catch(e) {
+        setStatus(uploadStatus, `Falha em ${fileList[i].name}: ${e.message}`, 'error');
+      }
     }
-    if (ok === files.length) uploadStatus.textContent = `${ok} vídeo(s) enviados.`;
-    videoFiles.value=''; schedulePoll(1200);
+    if (ok === fileList.length) setStatus(uploadStatus, `${ok} vídeo(s) enviado(s). Preparando análise…`, 'success');
+    else if (ok) setStatus(uploadStatus, `${ok} de ${fileList.length} vídeo(s) enviados.`, 'error');
+    schedulePoll(1200);
+    if (ok) scrollToWorkspaceAfterAdd();
+  }
+
+  videoFiles?.addEventListener('change', async () => {
+    await uploadFiles(videoFiles.files);
+    videoFiles.value='';
   });
+
+  ['dragenter','dragover'].forEach(name => dropZone?.addEventListener(name, e => { e.preventDefault(); dropZone.classList.add('drag-over'); }));
+  ['dragleave','drop'].forEach(name => dropZone?.addEventListener(name, e => { e.preventDefault(); dropZone.classList.remove('drag-over'); }));
+  dropZone?.addEventListener('drop', async e => { if (e.dataTransfer?.files?.length) await uploadFiles(e.dataTransfer.files); });
 
   async function reread(id) {
     const card = jobsGrid.querySelector(`[data-job-id="${id}"]`);
@@ -355,9 +484,15 @@
     if (btn) { btn.disabled=true; btn.textContent='Lendo…'; }
     try {
       const data = await api(`/api/jobs/${id}/caption`, {method:'POST'});
-      const d = ensureDraft(jobs.get(id)); d.caption = data.text || ''; d.touchedCaption = true;
+      const d = ensureDraft(jobs.get(id));
+      d.caption = data.text || '';
+      d.touchedCaption = true;
       renderJobs();
-    } catch(e) { alert(e.message); if(btn){btn.disabled=false;btn.textContent='Reler texto';} }
+      notify(data.text ? 'Chamada atualizada.' : 'Nenhum texto foi encontrado no frame.', data.text ? 'success' : 'info');
+    } catch(e) {
+      notify(e.message, 'error');
+      if(btn){btn.disabled=false;btn.textContent='Reler texto';}
+    }
   }
 
   async function generate(id, showNotice=true) {
@@ -389,16 +524,17 @@
 
   generateAllBtn?.addEventListener('click', async () => {
     const targets = [...jobs.values()].filter(j => j.status === 'ready');
-    if (!targets.length) return alert('Não há vídeos prontos para gerar.');
+    if (!targets.length) return notify('Não há vídeos prontos para gerar.', 'info');
     showGenerationModal(targets.map(j => j.id));
     generateAllBtn.disabled=true;
     let failed = 0;
+    const originalText = generateAllBtn.textContent;
     for (let i=0;i<targets.length;i++) {
-      generateAllBtn.textContent=`Enfileirando ${i+1}/${targets.length}…`;
+      generateAllBtn.textContent=`Enfileirando ${i+1}/${targets.length}`;
       const ok = await generate(targets[i].id, false);
       if (!ok) failed++;
     }
-    generateAllBtn.textContent='Gerar todos prontos';
+    generateAllBtn.textContent=originalText;
     generateAllBtn.disabled=false;
     if (!failed) updateGenerationModal();
     schedulePoll(1000);
@@ -406,25 +542,39 @@
 
   downloadZipBtn?.addEventListener('click', async () => {
     const ids = [...jobs.values()].filter(j=>j.has_result).map(j=>j.id);
-    if (!ids.length) return alert('Nenhum vídeo gerado para baixar.');
+    if (!ids.length) return notify('Gere pelo menos um vídeo antes de baixar o ZIP.', 'info');
     downloadZipBtn.disabled=true;
+    const originalText = downloadZipBtn.textContent;
+    downloadZipBtn.textContent = 'Preparando ZIP…';
     try {
       const response = await fetch('/api/jobs/zip',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':csrf},body:JSON.stringify({ids})});
       if (!response.ok) { const d=await response.json().catch(()=>({})); throw new Error(d.error||'Falha ao criar ZIP.'); }
       const blob=await response.blob(), url=URL.createObjectURL(blob), a=document.createElement('a');
       a.href=url;a.download='videos.zip';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),2000);
-    } catch(e){alert(e.message)} finally {downloadZipBtn.disabled=false;}
+      notify('ZIP pronto para download.', 'success');
+    } catch(e){
+      notify(e.message, 'error');
+    } finally {
+      downloadZipBtn.disabled=false;
+      downloadZipBtn.textContent=originalText;
+    }
   });
 
   async function removeJob(id) {
-    if (!confirm('Excluir este vídeo e seus arquivos?')) return;
-    try { await api(`/api/jobs/${id}`,{method:'DELETE'}); jobs.delete(id); drafts.delete(id); renderJobs(); }
-    catch(e){ alert(e.message); }
+    if (!confirm('Excluir este vídeo desta sessão e remover seus arquivos?')) return;
+    try {
+      await api(`/api/jobs/${id}`,{method:'DELETE'});
+      jobs.delete(id);
+      drafts.delete(id);
+      renderJobs();
+      notify('Vídeo excluído.', 'success');
+    } catch(e){
+      notify(e.message, 'error');
+    }
   }
 
   // A área de trabalho é intencionalmente efêmera. Não carregamos jobs antigos
-  // ao abrir/recarregar a página; apenas os vídeos adicionados nesta sessão da tela
-  // aparecem no grid. O backend mantém os jobs para fila, cota e limpeza.
+  // ao abrir/recarregar a página; apenas os vídeos adicionados nesta sessão aparecem.
   renderJobs();
   refreshUsage();
 })();

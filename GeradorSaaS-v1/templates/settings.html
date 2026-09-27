@@ -1,31 +1,48 @@
 {% extends "base.html" %}
 {% block title %}Minha página · {{ config.APP_NAME }}{% endblock %}
 {% block content %}
-<div class="content-narrow">
-  <div class="section-heading">
-    <div><span class="eyebrow">IDENTIDADE</span><h1>Minha página</h1><p>O layout, posições, fonte e proporções são fixos. Aqui você altera apenas sua identidade.</p></div>
+<div class="settings-shell">
+  <div class="section-heading settings-heading">
+    <div><span class="eyebrow">IDENTIDADE DA PÁGINA</span><h1>Minha página</h1><p>Esses dados aparecem automaticamente em todos os vídeos. O layout continua fixo e calibrado.</p></div>
   </div>
 
-  <form method="post" enctype="multipart/form-data" class="panel stack-form settings-form">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <div class="brand-preview-row">
-      <div class="avatar-preview">
-        {% if brand and brand.avatar_key %}<img src="{{ url_for('main.brand_avatar') }}" alt="Avatar">{% else %}<span>+</span>{% endif %}
+  <div class="settings-layout">
+    <aside class="panel brand-summary-card">
+      <span class="step-badge">PRÉVIA</span>
+      <div class="brand-avatar-large">
+        {% if brand and brand.avatar_key %}<img src="{{ url_for('main.brand_avatar') }}" alt="Avatar">{% else %}<span>{{ (brand.display_name[:1] if brand and brand.display_name else 'P')|upper }}</span>{% endif %}
       </div>
-      <div><strong>{{ brand.display_name if brand and brand.display_name else 'Sua página' }}</strong><br><span class="muted">{{ brand.handle if brand and brand.handle else '@suapagina' }}</span></div>
-    </div>
+      <strong>{{ brand.display_name if brand and brand.display_name else 'Sua página' }}</strong>
+      <span>{{ brand.handle if brand and brand.handle else '@suapagina' }}</span>
+      <div class="brand-status-list">
+        <div><span class="status-dot {{ 'ok' if brand and brand.avatar_key else '' }}"></span>Foto de perfil</div>
+        <div><span class="status-dot {{ 'ok' if brand and brand.logo_key else '' }}"></span>Logo opcional</div>
+        <div><span class="status-dot ok"></span>Template calibrado</div>
+      </div>
+    </aside>
 
-    <div class="form-grid">
-      <label>Nome da página<input name="display_name" maxlength="60" value="{{ brand.display_name if brand else '' }}" placeholder="Ex.: Futebol Insano" required></label>
-      <label>@ da página<input name="handle" maxlength="60" value="{{ brand.handle if brand else '' }}" placeholder="@futebolinsano" required></label>
-    </div>
-    <label>Foto de perfil <span class="muted">PNG, JPG ou WEBP</span><input type="file" name="avatar" accept="image/png,image/jpeg,image/webp" {% if not brand or not brand.avatar_key %}required{% endif %}></label>
-    <label>Logomarca opcional <span class="muted">ela aparece sobre o vídeo na posição já calibrada</span><input type="file" name="logo" accept="image/png,image/jpeg,image/webp"></label>
-    {% if brand and brand.logo_key %}
-      <label class="check-row"><input type="checkbox" name="use_logo_default" value="1" {% if brand.use_logo_default %}checked{% endif %}><span>Usar logomarca por padrão</span></label>
-      <label class="check-row danger-check"><input type="checkbox" name="remove_logo" value="1"><span>Remover logomarca atual</span></label>
-    {% endif %}
-    <div class="actions"><button class="primary" type="submit">Salvar página</button></div>
-  </form>
+    <form method="post" enctype="multipart/form-data" class="panel stack-form settings-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="form-section">
+        <div class="form-section-title"><strong>Informações da página</strong><span>Como sua identidade aparece no vídeo.</span></div>
+        <div class="form-grid">
+          <label>Nome da página<input name="display_name" maxlength="60" value="{{ brand.display_name if brand else '' }}" placeholder="Ex.: Futebol Insano" required></label>
+          <label>@ da página<input name="handle" maxlength="60" value="{{ brand.handle if brand else '' }}" placeholder="@futebolinsano" required></label>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-title"><strong>Arquivos da identidade</strong><span>Use imagens nítidas para um resultado melhor.</span></div>
+        <label class="file-field"><span><strong>Foto de perfil</strong><small>PNG, JPG ou WEBP</small></span><input type="file" name="avatar" accept="image/png,image/jpeg,image/webp" {% if not brand or not brand.avatar_key %}required{% endif %}></label>
+        <label class="file-field"><span><strong>Logomarca opcional</strong><small>Ela aparece na posição já calibrada sobre o vídeo.</small></span><input type="file" name="logo" accept="image/png,image/jpeg,image/webp"></label>
+        {% if brand and brand.logo_key %}
+          <label class="check-row switch-row"><input type="checkbox" name="use_logo_default" value="1" {% if brand.use_logo_default %}checked{% endif %}><span><strong>Usar logo por padrão</strong><small>Você ainda pode alterar essa opção em cada vídeo.</small></span></label>
+          <label class="check-row danger-check"><input type="checkbox" name="remove_logo" value="1"><span>Remover logomarca atual</span></label>
+        {% endif %}
+      </div>
+
+      <div class="settings-actions"><a class="ghost button-link" href="{{ url_for('main.dashboard') }}">Voltar</a><button class="primary primary-large" type="submit">Salvar alterações</button></div>
+    </form>
+  </div>
 </div>
 {% endblock %}

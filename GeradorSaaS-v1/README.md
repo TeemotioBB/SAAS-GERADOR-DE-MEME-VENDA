@@ -242,3 +242,7 @@ O código está estruturado como **MVP SaaS comercial**, mas ainda há tarefas e
 5. depois integrar pagamento recorrente.
 
 Também deixe claro que o usuário deve possuir direito ou autorização para reutilizar o conteúdo que importa.
+
+## v1.6 — Interface comercial
+
+A v1.6 reorganiza a interface para desktop e mobile sem alterar o motor de vídeo. Veja `CORRECAO_V1_6.md`.

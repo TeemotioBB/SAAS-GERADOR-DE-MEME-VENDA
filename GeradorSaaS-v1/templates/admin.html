@@ -1,17 +1,17 @@
 {% extends "base.html" %}
 {% block title %}Admin · {{ config.APP_NAME }}{% endblock %}
 {% block content %}
-<div class="content-wide">
-  <div class="section-heading"><div><span class="eyebrow">ADMIN</span><h1>Usuários</h1><p>Enquanto o pagamento não está integrado, você controla acesso e limite por aqui.</p></div></div>
+<div class="content-wide admin-page">
+  <div class="section-heading"><div><span class="eyebrow">ADMINISTRAÇÃO</span><h1>Usuários</h1><p>Controle acesso, plano e limite mensal enquanto o pagamento automático não está integrado.</p></div></div>
   <div class="panel table-wrap">
     <table>
       <thead><tr><th>E-mail</th><th>Página</th><th>Uso</th><th>Plano / acesso</th></tr></thead>
       <tbody>
       {% for user in users %}
         <tr>
-          <td>{{ user.email }}{% if user.is_admin %}<span class="pill">admin</span>{% endif %}</td>
+          <td><strong>{{ user.email }}</strong>{% if user.is_admin %}<span class="pill">admin</span>{% endif %}</td>
           <td>{{ user.brand.display_name if user.brand and user.brand.display_name else '—' }}</td>
-          <td>{{ user.usage_count }} / {{ user.monthly_limit }}</td>
+          <td><span class="usage-inline">{{ user.usage_count }} / {{ user.monthly_limit }}</span></td>
           <td>
             <form method="post" action="{{ url_for('admin.update_user', user_id=user.id) }}" class="admin-inline">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

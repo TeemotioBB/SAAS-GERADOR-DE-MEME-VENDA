@@ -2,18 +2,32 @@
 {% block title %}Criar conta · {{ config.APP_NAME }}{% endblock %}
 {% block page_class %}auth-page{% endblock %}
 {% block content %}
-<section class="auth-card">
-  <div class="auth-logo">{{ config.APP_NAME }}</div>
-  <h1>Crie sua conta</h1>
-  <p>Você configura sua página uma vez. O layout permanece padronizado em todas as gerações.</p>
-  <form method="post" class="stack-form">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <label>E-mail<input type="email" name="email" autocomplete="email" required></label>
-    <label>Senha<input type="password" name="password" minlength="8" autocomplete="new-password" required></label>
-    <label>Confirmar senha<input type="password" name="confirm" minlength="8" autocomplete="new-password" required></label>
-    <label class="check-row"><input type="checkbox" name="terms" value="1" required><span>Confirmo que vou usar apenas conteúdos que posso reutilizar e aceito os <a href="{{ url_for('main.terms') }}" target="_blank">termos</a>.</span></label>
-    <button class="primary" type="submit">Criar conta</button>
-  </form>
-  <p class="auth-footer">Já tem conta? <a href="{{ url_for('auth.login') }}">Entrar</a></p>
-</section>
+<div class="auth-shell">
+  <section class="auth-showcase">
+    <a class="auth-brand" href="{{ url_for('auth.login') }}"><span class="brand-mark">{{ config.APP_NAME[:1] }}</span><span>{{ config.APP_NAME }}</span></a>
+    <div class="auth-showcase-content">
+      <span class="eyebrow">SEU PADRÃO, AUTOMATICAMENTE</span>
+      <h1>Configure sua página uma vez. Gere no mesmo padrão sempre.</h1>
+      <p>Sem timeline, sem reposicionar elementos, sem começar do zero a cada vídeo.</p>
+      <div class="auth-benefits">
+        <span><b>✓</b> Recorte automático</span><span><b>✓</b> Identidade da página</span><span><b>✓</b> Download pronto</span>
+      </div>
+    </div>
+  </section>
+  <section class="auth-card">
+    <div class="mobile-auth-brand"><span class="brand-mark">{{ config.APP_NAME[:1] }}</span><strong>{{ config.APP_NAME }}</strong></div>
+    <span class="eyebrow">COMECE AGORA</span>
+    <h2>Crie sua conta</h2>
+    <p>Leva menos de um minuto.</p>
+    <form method="post" class="stack-form auth-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label>E-mail<input type="email" name="email" autocomplete="email" placeholder="voce@email.com" required></label>
+      <label>Senha<input type="password" name="password" minlength="8" autocomplete="new-password" placeholder="Mínimo de 8 caracteres" required></label>
+      <label>Confirmar senha<input type="password" name="confirm" minlength="8" autocomplete="new-password" placeholder="Repita sua senha" required></label>
+      <label class="check-row terms-check"><input type="checkbox" name="terms" value="1" required><span>Confirmo que vou usar apenas conteúdos que posso reutilizar e aceito os <a href="{{ url_for('main.terms') }}" target="_blank">termos de uso</a>.</span></label>
+      <button class="primary primary-large" type="submit">Criar minha conta</button>
+    </form>
+    <p class="auth-footer">Já tem conta? <a href="{{ url_for('auth.login') }}">Entrar</a></p>
+  </section>
+</div>
 {% endblock %}
