@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Admin · {{ config.APP_NAME }}{% endblock %}
+{% block content %}
+<div class="content-wide">
+  <div class="section-heading"><div><span class="eyebrow">ADMIN</span><h1>Usuários</h1><p>Enquanto o pagamento não está integrado, você controla acesso e limite por aqui.</p></div></div>
+  <div class="panel table-wrap">
+    <table>
+      <thead><tr><th>E-mail</th><th>Página</th><th>Uso</th><th>Plano / acesso</th></tr></thead>
+      <tbody>
+      {% for user in users %}
+        <tr>
+          <td>{{ user.email }}{% if user.is_admin %}<span class="pill">admin</span>{% endif %}</td>
+          <td>{{ user.brand.display_name if user.brand and user.brand.display_name else '—' }}</td>
+          <td>{{ user.usage_count }} / {{ user.monthly_limit }}</td>
+          <td>
+            <form method="post" action="{{ url_for('admin.update_user', user_id=user.id) }}" class="admin-inline">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="text" name="plan_name" value="{{ user.plan_name }}" maxlength="50" placeholder="Plano">
+              <input type="number" name="monthly_limit" min="0" max="100000" value="{{ user.monthly_limit }}" title="Limite mensal">
+              <label class="check-row"><input type="checkbox" name="account_active" value="1" {% if user.account_active %}checked{% endif %} {% if user.id == current_user.id %}disabled{% endif %}><span>Ativa</span></label>
+              <label class="check-row"><input type="checkbox" name="reset_usage" value="1"><span>Zerar uso</span></label>
+              <button class="secondary small" type="submit">Salvar</button>
+            </form>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

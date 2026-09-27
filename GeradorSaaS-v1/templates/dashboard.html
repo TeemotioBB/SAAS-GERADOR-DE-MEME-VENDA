@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Criar vídeos · {{ config.APP_NAME }}{% endblock %}
+{% block content %}
+<div class="dashboard-shell" data-default-logo="{{ '1' if brand and brand.use_logo_default else '0' }}" data-has-logo="{{ '1' if brand and brand.logo_key else '0' }}">
+  <section class="hero-row">
+    <div>
+      <span class="eyebrow">PAINEL</span>
+      <h1>Crie seus vídeos</h1>
+      <p>Cole links de Reels ou envie arquivos. O sistema detecta o recorte e aplica seu template automaticamente.</p>
+    </div>
+    <div class="usage-card">
+      <span>Uso mensal</span>
+      <strong id="usageCount">{{ current_user.usage_count }} / {{ current_user.monthly_limit }}</strong>
+      <small>{{ remaining }} gerações restantes</small>
+    </div>
+  </section>
+
+  {% if not brand or not brand.configured %}
+  <div class="setup-warning">
+    <div><strong>Configure sua página antes de começar.</strong><p>Nome, @ e avatar são aplicados automaticamente em todos os vídeos.</p></div>
+    <a class="primary button-link" href="{{ url_for('main.settings') }}">Configurar agora</a>
+  </div>
+  {% else %}
+  <section class="source-grid">
+    <div class="panel source-card">
+      <div class="source-icon">🔗</div>
+      <h2>Importar por link</h2>
+      <p>Cole até 20 links do Instagram, um por linha.</p>
+      <textarea id="reelUrls" rows="5" placeholder="https://www.instagram.com/reel/...&#10;https://www.instagram.com/reel/..."></textarea>
+      <button id="importBtn" class="primary" type="button">Importar Reels</button>
+      <div id="importStatus" class="status-line"></div>
+    </div>
+
+    <div class="panel source-card">
+      <div class="source-icon">⬆️</div>
+      <h2>Enviar arquivos</h2>
+      <p>MP4, MOV, M4V ou WEBM. Você pode selecionar vários.</p>
+      <label class="drop-zone" for="videoFiles">
+        <input id="videoFiles" type="file" multiple accept="video/mp4,video/quicktime,video/webm,.m4v">
+        <span>Selecionar vídeos</span>
+        <small>máx. {{ config.MAX_VIDEO_UPLOAD_MB }} MB por arquivo</small>
+      </label>
+      <div id="uploadStatus" class="status-line"></div>
+    </div>
+  </section>
+
+  <section class="work-section">
+    <div class="section-heading inline-heading">
+      <div><h2>Vídeos</h2><p>Revise o texto e o recorte antes de gerar.</p></div>
+      <div class="heading-actions">
+        <button id="generateAllBtn" class="secondary" type="button">Gerar todos prontos</button>
+        <button id="downloadZipBtn" class="ghost" type="button">Baixar ZIP</button>
+      </div>
+    </div>
+    <div id="jobsGrid" class="jobs-grid"></div>
+    <div id="emptyState" class="empty-state">
+      <strong>Nenhum vídeo ainda.</strong>
+      <span>Importe um Reel ou envie um arquivo para começar.</span>
+    </div>
+  </section>
+  {% endif %}
+</div>
+{% endblock %}
+{% block scripts %}
+{% if brand and brand.configured %}<script src="{{ url_for('static', filename='app.js') }}" defer></script>{% endif %}
+{% endblock %}
