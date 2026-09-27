@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Minha página · {{ config.APP_NAME }}{% endblock %}
+{% block content %}
+<div class="content-narrow">
+  <div class="section-heading">
+    <div><span class="eyebrow">IDENTIDADE</span><h1>Minha página</h1><p>O layout, posições, fonte e proporções são fixos. Aqui você altera apenas sua identidade.</p></div>
+  </div>
+
+  <form method="post" enctype="multipart/form-data" class="panel stack-form settings-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="brand-preview-row">
+      <div class="avatar-preview">
+        {% if brand and brand.avatar_key %}<img src="{{ url_for('main.brand_avatar') }}" alt="Avatar">{% else %}<span>+</span>{% endif %}
+      </div>
+      <div><strong>{{ brand.display_name if brand and brand.display_name else 'Sua página' }}</strong><br><span class="muted">{{ brand.handle if brand and brand.handle else '@suapagina' }}</span></div>
+    </div>
+
+    <div class="form-grid">
+      <label>Nome da página<input name="display_name" maxlength="60" value="{{ brand.display_name if brand else '' }}" placeholder="Ex.: Futebol Insano" required></label>
+      <label>@ da página<input name="handle" maxlength="60" value="{{ brand.handle if brand else '' }}" placeholder="@futebolinsano" required></label>
+    </div>
+    <label>Foto de perfil <span class="muted">PNG, JPG ou WEBP</span><input type="file" name="avatar" accept="image/png,image/jpeg,image/webp" {% if not brand or not brand.avatar_key %}required{% endif %}></label>
+    <label>Logomarca opcional <span class="muted">ela aparece sobre o vídeo na posição já calibrada</span><input type="file" name="logo" accept="image/png,image/jpeg,image/webp"></label>
+    {% if brand and brand.logo_key %}
+      <label class="check-row"><input type="checkbox" name="use_logo_default" value="1" {% if brand.use_logo_default %}checked{% endif %}><span>Usar logomarca por padrão</span></label>
+      <label class="check-row danger-check"><input type="checkbox" name="remove_logo" value="1"><span>Remover logomarca atual</span></label>
+    {% endif %}
+    <div class="actions"><button class="primary" type="submit">Salvar página</button></div>
+  </form>
+</div>
+{% endblock %}
