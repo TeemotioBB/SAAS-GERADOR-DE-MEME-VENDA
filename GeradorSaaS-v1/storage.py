@@ -97,7 +97,11 @@ class Storage:
     def presigned_get(self, key: str, download_name: str | None = None, expires: int = 600) -> str | None:
         if not self.remote:
             return None
-        params = {"Bucket": self.bucket, "Key": key}
+        params = {
+            "Bucket": self.bucket,
+            "Key": key,
+            "ResponseCacheControl": "no-store, no-cache, must-revalidate, max-age=0",
+        }
         if download_name:
             safe = download_name.replace('"', "").replace("\r", "").replace("\n", "")
             params["ResponseContentDisposition"] = f'attachment; filename="{safe}"'

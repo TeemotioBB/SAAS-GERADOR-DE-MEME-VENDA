@@ -269,7 +269,7 @@ def _normalizar_opcoes_uniqueness(options):
     """Normaliza opções de uniqueness.
 
     Chaves principais (desligadas por padrão):
-    - edicoes_extras: ativa flip, cor, grão, vinheta, zoom, crop aleatório e velocidade aleatória
+    - edicoes_extras: ativa cor, grão, vinheta, zoom, crop leve e velocidade aleatória
     - usar_logo: ativa a logomarca do perfil atual
     """
     options = dict(options or {})
@@ -302,24 +302,32 @@ def _normalizar_opcoes_uniqueness(options):
     if speed <= 0:
         speed = 1.0
 
+    remove_metadata = bool(options.get("remove_metadata", True))
+
     return {
         "edicoes_extras": edicoes_extras,
         "usar_logo": usar_logo,
+        # Espelhamento é independente das edições extras. Isso evita inverter
+        # textos que já façam parte dos pixels do vídeo quando o usuário não quiser.
+        "mirror_video": bool(options.get("mirror_video", False)),
         # Sub-opções só fazem efeito se edicoes_extras=True
         "light_crop": bool(options.get("light_crop", True)),
         "color_adjust": bool(options.get("color_adjust", True)),
         "subtle_grain": bool(options.get("subtle_grain", True)),
         "stronger_visuals": bool(options.get("stronger_visuals", True)),
-        "random_flip": bool(options.get("random_flip", True)),
+        # Mantida apenas por compatibilidade com payloads antigos. A interface
+        # SaaS v1.3 não usa flip aleatório dentro de edições extras.
+        "random_flip": bool(options.get("random_flip", False)),
         "vignette": bool(options.get("vignette", True)),
         "dynamic_zoom": bool(options.get("dynamic_zoom", True)),
         "speed_factor": speed,
         "crf": crf,
         # veryfast mantém o mesmo CRF/qualidade-alvo, mas reduz bastante o uso
-        # de CPU em comparação com slow. O app.py também força veryfast no Railway.
+        # de CPU em comparação com slow.
         "preset": _normalizar_preset_ffmpeg(options.get("preset", "veryfast")),
-        "deep_metadata_clean": bool(options.get("deep_metadata_clean", True)),
-        "remove_h264_sei": bool(options.get("remove_h264_sei", True)),
+        "remove_metadata": remove_metadata,
+        "deep_metadata_clean": remove_metadata and bool(options.get("deep_metadata_clean", True)),
+        "remove_h264_sei": remove_metadata and bool(options.get("remove_h264_sei", True)),
     }
 
 
@@ -544,17 +552,15 @@ def _gerar(video_path, caption, output_path, crop=None, uniqueness=None):
             f"crop=iw*(1-{crop_pct:.4f}):ih*(1-{crop_pct:.4f})"
         )
 
-    do_flip = False
-    if edicoes and opcoes.get("random_flip", True):
+    # Espelhar é uma opção própria e não depende de edições extras.
+    # Isso deixa o usuário decidir caso o vídeo contenha texto visível.
+    if opcoes.get("mirror_video", False):
         video_filters.append("hflip")
-        do_flip = True
 
     if edicoes and (opcoes["color_adjust"] or opcoes.get("stronger_visuals", True)):
         brightness = round(random.uniform(0.02, 0.06), 3)
         contrast = round(random.uniform(1.03, 1.10), 3)
         saturation = round(random.uniform(1.05, 1.18), 3)
-        if do_flip:
-            saturation = round(random.uniform(1.08, 1.22), 3)
         hue_shift = round(random.uniform(-6, 6), 1)
         video_filters.append(
             f"eq=brightness={brightness}:contrast={contrast}:saturation={saturation}"
@@ -687,16 +693,17 @@ def _gerar(video_path, caption, output_path, crop=None, uniqueness=None):
             "-sn", "-dn",
             "-shortest",
         ]
-        cmd += _metadata_clean_args()
+        if opcoes.get("remove_metadata", True):
+            cmd += _metadata_clean_args()
+            cmd += ["-fflags", "+bitexact"]
         cmd += [
-            "-fflags", "+bitexact",
             "-movflags", "+faststart",
             encoded_path,
         ]
 
         run(cmd)
 
-        if opcoes["deep_metadata_clean"]:
+        if opcoes.get("remove_metadata", True) and opcoes["deep_metadata_clean"]:
             deep_clean_mp4(
                 encoded_path,
                 output_path,

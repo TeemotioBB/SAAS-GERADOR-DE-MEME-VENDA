@@ -7,7 +7,7 @@ import uuid
 import zipfile
 from pathlib import Path
 
-from flask import Blueprint, abort, after_this_request, current_app, flash, jsonify, redirect, render_template, request, send_file, url_for
+from flask import Blueprint, abort, after_this_request, current_app, flash, jsonify, redirect, render_template, request, send_file, url_for, make_response
 from flask_login import current_user, login_required
 from sqlalchemy import select
 from werkzeug.utils import secure_filename
@@ -282,6 +282,30 @@ def reread_caption(job_id):
     return jsonify({"text": text})
 
 
+def _normalize_crop_for_job(job, crop):
+    """Normaliza o crop vindo do navegador para coordenadas reais do vídeo.
+
+    Mantém o mesmo formato x/y/w/h do detector antigo, mas impede valores fora
+    do frame e garante inteiros estáveis em qualquer navegador/dispositivo.
+    """
+    if not isinstance(crop, dict) or not job.width or not job.height:
+        return job.crop
+    try:
+        x = int(round(float(crop.get("x", 0))))
+        y = int(round(float(crop.get("y", 0))))
+        w = int(round(float(crop.get("w", 0))))
+        h = int(round(float(crop.get("h", 0))))
+    except (TypeError, ValueError):
+        return job.crop
+
+    vw, vh = int(job.width), int(job.height)
+    x = max(0, min(x, max(0, vw - 2)))
+    y = max(0, min(y, max(0, vh - 2)))
+    w = max(2, min(w, vw - x))
+    h = max(2, min(h, vh - y))
+    return {"x": x, "y": y, "w": w, "h": h}
+
+
 @main_bp.post("/api/jobs/<job_id>/render")
 @login_required
 @limiter.limit("120 per hour")
@@ -294,8 +318,13 @@ def render(job_id):
 
     data = request.get_json(silent=True) or {}
     caption = (data.get("caption") or "").strip()
-    crop = data.get("crop") if isinstance(data.get("crop"), dict) else job.crop
+    crop = _normalize_crop_for_job(job, data.get("crop") if isinstance(data.get("crop"), dict) else job.crop)
     use_logo = bool(data.get("use_logo")) and bool(current_user.brand and current_user.brand.logo_key)
+    extra_edits = bool(data.get("extra_edits"))
+    mirror_video = bool(data.get("mirror_video"))
+    # Se um navegador antigo não enviar a opção, preserva o comportamento
+    # anterior e remove metadados por padrão.
+    remove_metadata = data.get("remove_metadata", True) is not False
     if not caption:
         return jsonify({"error": "Digite a legenda/chamada."}), 400
 
@@ -311,9 +340,17 @@ def render(job_id):
     job.status = "rendering"
     job.error_message = None
     job.last_caption = caption
+    # Persiste exatamente o recorte que será renderizado. Assim um ajuste feito
+    # no desktop/celular continua igual após refresh e em outro dispositivo.
+    job.crop = crop
     db.session.commit()
     try:
-        enqueue("tasks.render_job", job.id, caption, crop, use_logo, timeout=1800)
+        enqueue(
+            "tasks.render_job",
+            job.id, caption, crop, use_logo,
+            extra_edits, mirror_video, remove_metadata,
+            timeout=1800,
+        )
     except Exception as exc:
         job.status = "ready"
         job.error_message = f"Fila indisponível: {exc}"
@@ -329,9 +366,13 @@ def preview_result(job_id):
     if not job.result_key:
         abort(404)
     if storage.remote:
-        return redirect(storage.presigned_get(job.result_key, expires=600))
+        response = redirect(storage.presigned_get(job.result_key, expires=600))
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        return response
     data = storage.read_bytes(job.result_key)
-    return send_file(io.BytesIO(data), mimetype="video/mp4", conditional=True)
+    response = send_file(io.BytesIO(data), mimetype="video/mp4", conditional=True, max_age=0)
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    return response
 
 
 @main_bp.get("/api/jobs/<job_id>/download")
@@ -341,14 +382,19 @@ def download_result(job_id):
     if not job.result_key:
         abort(404)
     if storage.remote:
-        return redirect(storage.presigned_get(job.result_key, job.result_name or "video.mp4", expires=600))
+        response = redirect(storage.presigned_get(job.result_key, job.result_name or "video.mp4", expires=600))
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        return response
     data = storage.read_bytes(job.result_key)
-    return send_file(
+    response = send_file(
         io.BytesIO(data),
         mimetype="video/mp4",
         as_attachment=True,
         download_name=job.result_name or "video.mp4",
+        max_age=0,
     )
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    return response
 
 
 @main_bp.post("/api/jobs/zip")

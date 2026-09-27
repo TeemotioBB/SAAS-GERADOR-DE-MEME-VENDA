@@ -38,6 +38,17 @@ Não existe editor livre de posição/fonte/template nesta versão. Isso é inte
 - páginas iniciais de Termos e Privacidade;
 - removidos: coletor automático de Reels, aba “Minha aba de Reels”, chave de agente, agente local e dependência do seu feed pessoal.
 
+## Opções por vídeo (v1.3)
+
+Antes de gerar, cada vídeo possui controles independentes:
+
+- **Remover metadados** — ligado por padrão;
+- **Edições extras** — cor, grão, vinheta, zoom, crop leve e pequena variação de velocidade;
+- **Espelhar vídeo** — separado das edições extras para não inverter textos existentes no conteúdo;
+- **Logo** — quando o cliente cadastrou uma logomarca.
+
+O template, posições, fontes e dimensões continuam fixos para todos os clientes.
+
 ## Pagamento
 
 **Não há integração de pagamento nesta versão**, conforme solicitado.

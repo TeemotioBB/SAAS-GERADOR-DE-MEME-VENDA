@@ -26,6 +26,9 @@
         caption: job.last_caption || job.suggested_caption || '',
         crop: job.crop ? {...job.crop} : null,
         useLogo: defaultLogo,
+        extraEdits: false,
+        mirrorVideo: false,
+        removeMetadata: true,
       });
     } else {
       const d = drafts.get(job.id);
@@ -100,13 +103,28 @@
               <span class="confidence">recorte ${Math.round((job.confidence || 0)*100)}%</span>
             </div>` : `<div class="frame-wrap placeholder-wrap"><div class="frame-placeholder">${job.status === 'error' ? 'Não foi possível preparar este vídeo.' : 'Preparando vídeo…'}</div></div>`}
           ${job.error ? `<div class="job-error">${escapeHtml(job.error)}</div>` : ''}
-          ${hasResult ? `<video class="result-preview" controls preload="metadata" src="/api/jobs/${job.id}/preview"></video>` : ''}
+          ${hasResult ? `<video class="result-preview" controls preload="metadata" src="/api/jobs/${job.id}/preview?v=${encodeURIComponent(`${job.generation_count || 0}-${job.updated_at || ''}`)}"></video>` : ''}
           <textarea class="job-caption" placeholder="Digite a chamada do vídeo" ${canEdit?'':'disabled'}>${escapeHtml(d.caption)}</textarea>
+          <div class="job-options">
+            <label class="option-toggle" title="Remove tags e metadados embutidos do MP4 final">
+              <input class="metadata-check" type="checkbox" ${d.removeMetadata?'checked':''}>
+              <span>🧹 Remover metadados</span>
+            </label>
+            <label class="option-toggle" title="Aplica pequenas variações visuais: cor, grão, vinheta, zoom, crop leve e velocidade">
+              <input class="extras-check" type="checkbox" ${d.extraEdits?'checked':''}>
+              <span>✨ Edições extras</span>
+            </label>
+            <label class="option-toggle" title="Espelha somente o vídeo. Evite ativar quando houver texto visível dentro do vídeo">
+              <input class="mirror-check" type="checkbox" ${d.mirrorVideo?'checked':''}>
+              <span>↔️ Espelhar vídeo</span>
+            </label>
+            ${hasLogo ? `<label class="option-toggle"><input class="logo-check" type="checkbox" ${d.useLogo?'checked':''}><span>🏷️ Logo</span></label>` : ''}
+          </div>
+          <div class="option-hint">Edições extras: cor, grão, vinheta, zoom, crop leve e pequena variação de velocidade. O espelhamento é separado para não inverter textos do vídeo.</div>
           <div class="job-toolbar">
             <button class="icon-btn reread" type="button" ${job.has_frame?'':'disabled'}>Reler texto</button>
-            ${hasLogo ? `<label class="check-row logo-toggle"><input class="logo-check" type="checkbox" ${d.useLogo?'checked':''}><span>Logo</span></label>` : ''}
             <span class="spacer"></span>
-            ${hasResult ? `<a class="icon-btn" href="/api/jobs/${job.id}/download">Baixar</a>` : ''}
+            ${hasResult ? `<a class="icon-btn" href="/api/jobs/${job.id}/download?v=${encodeURIComponent(`${job.generation_count || 0}-${job.updated_at || ''}`)}">Baixar</a>` : ''}
             <button class="secondary generate-one" type="button" ${canRender?'':'disabled'}>${job.status === 'done' ? 'Gerar novamente' : 'Gerar vídeo'}</button>
             <button class="icon-btn danger delete-one" type="button">Excluir</button>
           </div>
@@ -125,6 +143,9 @@
       if (btn) btn.disabled = !draft.caption.trim() || !['ready','done','error'].includes(job.status);
     });
     card.querySelector('.logo-check')?.addEventListener('change', e => draft.useLogo = e.target.checked);
+    card.querySelector('.extras-check')?.addEventListener('change', e => draft.extraEdits = e.target.checked);
+    card.querySelector('.mirror-check')?.addEventListener('change', e => draft.mirrorVideo = e.target.checked);
+    card.querySelector('.metadata-check')?.addEventListener('change', e => draft.removeMetadata = e.target.checked);
     card.querySelector('.reread')?.addEventListener('click', () => reread(job.id));
     card.querySelector('.generate-one')?.addEventListener('click', () => generate(job.id));
     card.querySelector('.delete-one')?.addEventListener('click', () => removeJob(job.id));
@@ -139,15 +160,20 @@
 
     const begin = (event, resize=false) => {
       event.preventDefault();
-      const rect = wrap.getBoundingClientRect();
+      const startRect = wrap.getBoundingClientRect();
       const startX = event.clientX, startY = event.clientY;
       const start = {...draft.crop};
       const pointerId = event.pointerId;
       (resize ? handle : box).setPointerCapture?.(pointerId);
 
       const move = e => {
-        const dx = (e.clientX - startX) / rect.width * job.width;
-        const dy = (e.clientY - startY) / rect.height * job.height;
+        // Usa a dimensão real exibida do frame. Isso evita diferença entre desktop,
+        // celular, zoom do navegador e cards responsivos.
+        const rect = wrap.getBoundingClientRect();
+        const scaleW = rect.width || startRect.width || 1;
+        const scaleH = rect.height || startRect.height || 1;
+        const dx = (e.clientX - startX) / scaleW * job.width;
+        const dy = (e.clientY - startY) / scaleH * job.height;
         if (resize) {
           draft.crop.w = Math.max(40, Math.min(job.width - start.x, start.w + dx));
           draft.crop.h = Math.max(40, Math.min(job.height - start.y, start.h + dy));
@@ -240,7 +266,18 @@
     const job = jobs.get(id), d = ensureDraft(job);
     if (!d.caption.trim()) return alert('Digite a legenda/chamada.');
     try {
-      const data = await api(`/api/jobs/${id}/render`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({caption:d.caption,crop:d.crop,use_logo:d.useLogo})});
+      const data = await api(`/api/jobs/${id}/render`, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          caption:d.caption,
+          crop:d.crop,
+          use_logo:d.useLogo,
+          extra_edits:d.extraEdits,
+          mirror_video:d.mirrorVideo,
+          remove_metadata:d.removeMetadata
+        })
+      });
       jobs.set(id,data.job); renderJobs(); schedulePoll(1200);
     } catch(e) { alert(e.message); }
   }

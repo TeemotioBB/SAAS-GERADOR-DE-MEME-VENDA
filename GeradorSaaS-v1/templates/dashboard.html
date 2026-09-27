@@ -62,5 +62,5 @@
 </div>
 {% endblock %}
 {% block scripts %}
-{% if brand and brand.configured %}<script src="{{ url_for('static', filename='app.js') }}" defer></script>{% endif %}
+{% if brand and brand.configured %}<script src="{{ url_for('static', filename='app.js', v='1.3.0') }}" defer></script>{% endif %}
 {% endblock %}

@@ -121,7 +121,15 @@ def import_instagram_job(job_id: str):
             _set_error(job, exc)
 
 
-def render_job(job_id: str, caption: str, crop: dict | None, use_logo: bool):
+def render_job(
+    job_id: str,
+    caption: str,
+    crop: dict | None,
+    use_logo: bool,
+    extra_edits: bool = False,
+    mirror_video: bool = False,
+    remove_metadata: bool = True,
+):
     with app.app_context():
         job = _job_or_none(job_id)
         if not job or not job.source_key:
@@ -154,10 +162,16 @@ def render_job(job_id: str, caption: str, crop: dict | None, use_logo: bool):
                     "logo_width": 130,
                 }
                 uniqueness = {
-                    "edicoes_extras": False,
+                    # Edições visuais opcionais. O espelhamento fica separado
+                    # para não inverter textos que já existam dentro do vídeo.
+                    "edicoes_extras": bool(extra_edits),
+                    "random_flip": False,
+                    "mirror_video": bool(mirror_video),
                     "usar_logo": bool(use_logo and logo_path),
-                    "deep_metadata_clean": True,
-                    "remove_h264_sei": True,
+                    # Privacidade: ativado por padrão, mas controlado na interface.
+                    "remove_metadata": bool(remove_metadata),
+                    "deep_metadata_clean": bool(remove_metadata),
+                    "remove_h264_sei": bool(remove_metadata),
                     "crf": int(app.config["RAILWAY_FFMPEG_CRF"]),
                     "preset": app.config["RAILWAY_FFMPEG_PRESET"],
                 }
@@ -176,19 +190,26 @@ def render_job(job_id: str, caption: str, crop: dict | None, use_logo: bool):
                 if not os.path.isfile(output_path):
                     raise RuntimeError("O render terminou sem criar o arquivo final.")
 
-                result_key = f"users/{job.user_id}/jobs/{job.id}/result.mp4"
+                # Nunca sobrescreve a mesma URL de resultado. Browsers/CDNs podem
+                # manter o MP4 antigo em cache, o que fazia desktop mostrar uma
+                # geração anterior enquanto o celular já via a nova.
+                next_generation = int(job.generation_count or 0) + 1
+                result_key = f"users/{job.user_id}/jobs/{job.id}/result_v{next_generation}.mp4"
+                old_result_key = job.result_key
                 storage.put_file(result_key, output_path, "video/mp4")
 
             safe_base = Path(job.original_name or "video").stem[:80] or "video"
             job.result_key = result_key
             job.result_name = f"post_{safe_base}.mp4"
             job.last_caption = caption
-            job.generation_count += 1
+            job.generation_count = next_generation
             job.status = "done"
             job.error_message = None
 
             user.refresh_usage_period()
             user.usage_count += 1
             db.session.commit()
+            if old_result_key and old_result_key != result_key:
+                storage.delete(old_result_key)
         except Exception as exc:
             _set_error(job, exc)
