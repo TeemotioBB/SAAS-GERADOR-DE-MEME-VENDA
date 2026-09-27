@@ -483,6 +483,12 @@ def delete_job(job_id):
     return jsonify({"ok": True})
 
 
+@main_bp.get("/como-funciona")
+@login_required
+def how_it_works():
+    return render_template("how_it_works.html")
+
+
 @main_bp.get("/terms")
 def terms():
     return render_template("terms.html")

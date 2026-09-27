@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}Como funciona · {{ config.APP_NAME }}{% endblock %}
+{% block page_class %}guide-page{% endblock %}
+{% block content %}
+<div class="guide-shell">
+  <section class="guide-hero">
+    <span class="eyebrow">GUIA RÁPIDO</span>
+    <h1>Como funciona</h1>
+    <p>Entenda o que cada recurso faz e quando usar. O sistema mantém um template fixo e transforma o vídeo que você envia ou importa no padrão da sua página.</p>
+  </section>
+
+  <section class="guide-flow" aria-label="Etapas principais">
+    <article class="guide-step-card">
+      <span class="guide-step-number">1</span>
+      <div><strong>Adicione o vídeo</strong><p>Cole o link de um Reel compatível ou envie um arquivo do seu celular/computador.</p></div>
+    </article>
+    <article class="guide-step-card">
+      <span class="guide-step-number">2</span>
+      <div><strong>Revise</strong><p>Confira o recorte automático e a chamada. Você pode ajustar o recorte e editar ou apagar o texto.</p></div>
+    </article>
+    <article class="guide-step-card">
+      <span class="guide-step-number">3</span>
+      <div><strong>Gere e baixe</strong><p>Escolha as opções desejadas, gere o resultado e baixe o MP4 final.</p></div>
+    </article>
+  </section>
+
+  <div class="guide-section-heading">
+    <div>
+      <span class="eyebrow">RECURSOS</span>
+      <h2>O que cada opção faz</h2>
+    </div>
+    <p>As opções são independentes e podem ser escolhidas para cada vídeo.</p>
+  </div>
+
+  <section class="feature-guide-grid">
+    <article class="feature-guide-card recommended">
+      <div class="feature-guide-icon">🧹</div>
+      <div class="feature-guide-copy">
+        <div class="feature-title-row"><h3>Remover metadados</h3><span>Recomendado</span></div>
+        <p>Remove informações técnicas embutidas no arquivo final, como comentários, datas, campos de software/encoder e outros metadados que não são necessários para assistir ao vídeo.</p>
+        <div class="feature-note"><b>Não faz:</b> não apaga textos, logos ou marcas que estejam visíveis na imagem.</div>
+      </div>
+    </article>
+
+    <article class="feature-guide-card">
+      <div class="feature-guide-icon">✨</div>
+      <div class="feature-guide-copy">
+        <div class="feature-title-row"><h3>Edições extras</h3></div>
+        <p>Aplica pequenas alterações visuais ao vídeo, como ajustes de cor, grão, vinheta, zoom, recorte leve e pequena variação de velocidade.</p>
+        <div class="feature-note">Use quando quiser uma aparência ligeiramente diferente sem alterar o template da página.</div>
+      </div>
+    </article>
+
+    <article class="feature-guide-card warning">
+      <div class="feature-guide-icon">↔️</div>
+      <div class="feature-guide-copy">
+        <div class="feature-title-row"><h3>Espelhar vídeo</h3><span>Atenção</span></div>
+        <p>Inverte horizontalmente somente o vídeo original. O nome da página, a chamada e os elementos adicionados pelo sistema continuam normais.</p>
+        <div class="feature-note"><b>Cuidado:</b> se o vídeo original tiver palavras, placas ou legendas visíveis, elas também ficarão espelhadas.</div>
+      </div>
+    </article>
+
+    <article class="feature-guide-card">
+      <div class="feature-guide-icon">🏷️</div>
+      <div class="feature-guide-copy">
+        <div class="feature-title-row"><h3>Adicionar logo</h3></div>
+        <p>Inclui no resultado a logo cadastrada em <b>Minha página</b>. Você pode definir que ela venha marcada por padrão e ainda desligá-la individualmente em cada vídeo.</p>
+      </div>
+    </article>
+
+    <article class="feature-guide-card">
+      <div class="feature-guide-icon">✍️</div>
+      <div class="feature-guide-copy">
+        <div class="feature-title-row"><h3>Chamada do vídeo</h3><span>Opcional</span></div>
+        <p>O sistema tenta ler a chamada automaticamente ao preparar o vídeo. Você pode editar o texto, usar <b>Reler texto</b> ou deixar o campo totalmente vazio.</p>
+        <div class="feature-note">Sem chamada, o vídeo é gerado normalmente com a identidade da página e o conteúdo.</div>
+      </div>
+    </article>
+
+    <article class="feature-guide-card">
+      <div class="feature-guide-icon">▣</div>
+      <div class="feature-guide-copy">
+        <div class="feature-title-row"><h3>Recorte automático</h3></div>
+        <p>Detecta a área principal do vídeo e prepara o enquadramento para o template. A caixa azul mostra a região que será usada.</p>
+        <div class="feature-note">Se a detecção não ficar perfeita, arraste ou redimensione a caixa antes de gerar.</div>
+      </div>
+    </article>
+
+    <article class="feature-guide-card">
+      <div class="feature-guide-icon">🔄</div>
+      <div class="feature-guide-copy">
+        <div class="feature-title-row"><h3>Reler texto</h3></div>
+        <p>Faz uma nova tentativa de leitura da chamada a partir do frame do vídeo. É útil quando a leitura automática inicial não encontrou o texto corretamente.</p>
+      </div>
+    </article>
+
+    <article class="feature-guide-card">
+      <div class="feature-guide-icon">👤</div>
+      <div class="feature-guide-copy">
+        <div class="feature-title-row"><h3>Minha página</h3></div>
+        <p>É onde você configura nome, @, avatar e logo. Essas informações formam a identidade usada nos vídeos; as posições do template já vêm calibradas.</p>
+      </div>
+    </article>
+  </section>
+
+  <section class="guide-tips panel">
+    <div class="guide-tips-head">
+      <span class="guide-tips-icon">✓</span>
+      <div><h2>Para ter um resultado melhor</h2><p>Três cuidados simples antes de gerar.</p></div>
+    </div>
+    <div class="guide-tip-list">
+      <div><b>Confira o recorte.</b><span>A caixa azul deve envolver somente a área que você quer aproveitar.</span></div>
+      <div><b>Revise a chamada.</b><span>A leitura é automática, mas nomes e textos estilizados podem precisar de correção manual.</span></div>
+      <div><b>Use espelhamento com cuidado.</b><span>Evite a opção quando houver texto importante dentro do vídeo original.</span></div>
+    </div>
+  </section>
+
+  <section class="guide-faq">
+    <div class="guide-section-heading compact"><div><span class="eyebrow">DÚVIDAS RÁPIDAS</span><h2>O que o sistema faz — e o que não faz</h2></div></div>
+    <details open><summary>O sistema cria o vídeo do zero?</summary><p>Não. Ele pega um vídeo existente, detecta o enquadramento e monta automaticamente o resultado dentro do template fixo da sua página.</p></details>
+    <details><summary>Posso gerar sem chamada?</summary><p>Sim. O texto é opcional. Com o campo vazio, o sistema gera normalmente usando a identidade da página e o vídeo.</p></details>
+    <details><summary>Atualizar a página apaga meus vídeos?</summary><p>A lista visual é limpa quando você atualiza a página. Isso não cancela um processamento que já foi enviado ao servidor.</p></details>
+    <details><summary>E se um link do Instagram não importar?</summary><p>O Instagram pode limitar downloads por link em alguns momentos. Nesse caso, use o envio manual do arquivo como alternativa.</p></details>
+  </section>
+
+  <div class="guide-cta">
+    <a class="primary" href="{{ url_for('main.dashboard') }}">Criar um vídeo</a>
+    <a class="secondary" href="{{ url_for('main.settings') }}">Configurar minha página</a>
+  </div>
+</div>
+{% endblock %}
