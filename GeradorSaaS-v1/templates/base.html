@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#ffffff">
   <meta name="csrf-token" content="{{ csrf_token() }}">
   <title>{% block title %}{{ config.APP_NAME }}{% endblock %}</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css', v='1.8.0') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css', v='1.8.2') }}">
 </head>
 <body class="{% if current_user.is_authenticated %}app-authenticated{% endif %}">
   {% if current_user.is_authenticated %}
@@ -22,24 +22,39 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
           Criar
         </a>
+
         <a class="nav-link {% if request.endpoint == 'main.settings' %}active{% endif %}" href="{{ url_for('main.settings') }}">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3"/><path d="M5.5 20a6.5 6.5 0 0 1 13 0"/></svg>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="8" r="3"/>
+            <path d="M5.5 20a6.5 6.5 0 0 1 13 0"/>
+          </svg>
           Minha página
         </a>
+
         <a class="nav-link {% if request.endpoint == 'main.how_it_works' %}active{% endif %}" href="{{ url_for('main.how_it_works') }}">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.8 9.3a2.5 2.5 0 0 1 4.8 1c0 1.8-2.6 2.1-2.6 3.7M12 17.4h.01"/></svg>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="9"/>
+            <path d="M9.8 9.3a2.5 2.5 0 0 1 4.8 1c0 1.8-2.6 2.1-2.6 3.7M12 17.4h.01"/>
+          </svg>
           Como funciona
         </a>
+
         {% if current_user.is_admin %}
         <a class="nav-link {% if request.endpoint and request.endpoint.startswith('admin.') %}active{% endif %}" href="{{ url_for('admin.index') }}">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 6v5c0 4.6 2.9 8.4 7 10 4.1-1.6 7-5.4 7-10V6l-7-3Z"/><path d="M9.5 12.2 11 13.7l3.5-3.5"/></svg>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 3 5 6v5c0 4.6 2.9 8.4 7 10 4.1-1.6 7-5.4 7-10V6l-7-3Z"/>
+            <path d="M9.5 12.2 11 13.7l3.5-3.5"/>
+          </svg>
           Admin
         </a>
         {% endif %}
       </nav>
 
       <div class="topbar-actions">
-        <span class="account-email" title="{{ current_user.email }}">{{ current_user.email }}</span>
+        <span class="account-email" title="{{ current_user.email }}">
+          {{ current_user.email }}
+        </span>
+
         <form method="post" action="{{ url_for('auth.logout') }}" class="inline-form">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button class="quiet-button" type="submit">Sair</button>
@@ -50,27 +65,44 @@
 
   <nav class="mobile-nav" aria-label="Navegação principal">
     <a class="mobile-nav-link {% if request.endpoint == 'main.dashboard' %}active{% endif %}" href="{{ url_for('main.dashboard') }}">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 5v14M5 12h14"/>
+      </svg>
       <span>Criar</span>
     </a>
+
     <a class="mobile-nav-link {% if request.endpoint == 'main.settings' %}active{% endif %}" href="{{ url_for('main.settings') }}">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3"/><path d="M5.5 20a6.5 6.5 0 0 1 13 0"/></svg>
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="8" r="3"/>
+        <path d="M5.5 20a6.5 6.5 0 0 1 13 0"/>
+      </svg>
       <span>Minha página</span>
     </a>
+
     <a class="mobile-nav-link {% if request.endpoint == 'main.how_it_works' %}active{% endif %}" href="{{ url_for('main.how_it_works') }}">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.8 9.3a2.5 2.5 0 0 1 4.8 1c0 1.8-2.6 2.1-2.6 3.7M12 17.4h.01"/></svg>
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="12" r="9"/>
+        <path d="M9.8 9.3a2.5 2.5 0 0 1 4.8 1c0 1.8-2.6 2.1-2.6 3.7M12 17.4h.01"/>
+      </svg>
       <span>Como funciona</span>
     </a>
+
     {% if current_user.is_admin %}
     <a class="mobile-nav-link {% if request.endpoint and request.endpoint.startswith('admin.') %}active{% endif %}" href="{{ url_for('admin.index') }}">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 6v5c0 4.6 2.9 8.4 7 10 4.1-1.6 7-5.4 7-10V6l-7-3Z"/></svg>
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 3 5 6v5c0 4.6 2.9 8.4 7 10 4.1-1.6 7-5.4 7-10V6l-7-3Z"/>
+      </svg>
       <span>Admin</span>
     </a>
     {% endif %}
+
     <form method="post" action="{{ url_for('auth.logout') }}" class="mobile-logout-form">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
       <button class="mobile-nav-link" type="submit">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 5H5v14h5M14 8l4 4-4 4M18 12H9"/></svg>
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M10 5H5v14h5M14 8l4 4-4 4M18 12H9"/>
+        </svg>
         <span>Sair</span>
       </button>
     </form>
@@ -87,8 +119,10 @@
         </div>
       {% endif %}
     {% endwith %}
+
     {% block content %}{% endblock %}
   </main>
+
   {% block scripts %}{% endblock %}
 </body>
 </html>
