@@ -10,7 +10,7 @@ from flask import Flask
 from config import Config
 from extensions import csrf, db, limiter, login_manager
 from models import MediaJob, User, utcnow
-from storage import storage
+from storage import storage, poster_key_for_result
 
 
 def create_app(test_config=None):
@@ -97,7 +97,7 @@ def create_app(test_config=None):
         jobs = MediaJob.query.filter(MediaJob.created_at < cutoff).all()
         count = 0
         for job in jobs:
-            for key in (job.source_key, job.frame_key, job.result_key):
+            for key in (job.source_key, job.frame_key, job.result_key, poster_key_for_result(job.result_key)):
                 storage.delete(key)
             db.session.delete(job)
             count += 1

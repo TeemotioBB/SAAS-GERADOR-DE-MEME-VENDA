@@ -169,7 +169,7 @@
                 ${d.crop && job.width && job.height ? `<div class="crop-box" style="${cropStyle(job,d.crop)}"><div class="crop-handle"></div></div>` : ''}
                 <span class="confidence">Recorte ${Math.round((job.confidence || 0)*100)}%</span>
               </div>` : `<div class="frame-wrap placeholder-wrap"><div class="frame-placeholder">${job.status === 'error' ? 'Não foi possível preparar este vídeo.' : 'Preparando o vídeo…'}</div></div>`}
-            ${hasResult ? `<div class="result-block"><span class="media-label">Resultado gerado</span><video class="result-preview" controls preload="metadata" src="/api/jobs/${job.id}/preview?v=${encodeURIComponent(`${job.generation_count || 0}-${job.updated_at || ''}`)}"></video></div>` : ''}
+            ${hasResult ? `<div class="result-block"><span class="media-label">Resultado gerado</span><video class="result-preview" controls playsinline webkit-playsinline preload="metadata" poster="/api/jobs/${job.id}/poster?v=${encodeURIComponent(`${job.generation_count || 0}-${job.updated_at || ''}`)}" src="/api/jobs/${job.id}/preview?v=${encodeURIComponent(`${job.generation_count || 0}-${job.updated_at || ''}`)}"></video></div>` : ''}
           </div>
 
           <div class="job-controls-column">

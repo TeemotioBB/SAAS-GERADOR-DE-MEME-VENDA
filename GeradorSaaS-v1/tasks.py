@@ -10,7 +10,7 @@ from extensions import db
 from instagram_import import baixar_video_instagram, InstagramImportError
 from media_utils import ANALYSIS_WORKER, RENDER_WORKER, ffprobe_video, run, worker_json
 from models import MediaJob, User
-from storage import storage
+from storage import storage, poster_key_for_result
 
 app = create_app()
 
@@ -203,8 +203,28 @@ def render_job(
                 # geração anterior enquanto o celular já via a nova.
                 next_generation = int(job.generation_count or 0) + 1
                 result_key = f"users/{job.user_id}/jobs/{job.id}/result_v{next_generation}.mp4"
+                poster_key = poster_key_for_result(result_key)
+                poster_path = os.path.join(td, "result_poster.jpg")
                 old_result_key = job.result_key
                 storage.put_file(result_key, output_path, "video/mp4")
+
+                # Browsers mobile (principalmente Safari/iOS) podem manter o <video>
+                # preto até o primeiro play quando não há poster. Criamos uma
+                # miniatura REAL do vídeo final já renderizado, sem mudar o MP4.
+                try:
+                    run([
+                        "ffmpeg", "-y", "-i", output_path,
+                        "-frames:v", "1",
+                        "-vf", "scale=720:-2:force_original_aspect_ratio=decrease",
+                        "-q:v", "3", poster_path,
+                    ], timeout=120)
+                    if poster_key and os.path.isfile(poster_path):
+                        storage.put_file(poster_key, poster_path, "image/jpeg")
+                except Exception:
+                    # A miniatura melhora a UX, mas nunca deve fazer um render
+                    # válido falhar. O endpoint de poster usa o frame de análise
+                    # como fallback caso esta etapa não esteja disponível.
+                    pass
 
             safe_base = Path(job.original_name or "video").stem[:80] or "video"
             job.result_key = result_key
@@ -219,5 +239,6 @@ def render_job(
             db.session.commit()
             if old_result_key and old_result_key != result_key:
                 storage.delete(old_result_key)
+                storage.delete(poster_key_for_result(old_result_key))
         except Exception as exc:
             _set_error(job, exc)

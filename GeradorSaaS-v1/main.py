@@ -17,7 +17,7 @@ from caption_service import extract_caption
 from instagram_import import InstagramImportError, normalizar_url_instagram
 from models import BrandProfile, MediaJob, User
 from queueing import enqueue
-from storage import storage
+from storage import storage, poster_key_for_result
 
 main_bp = Blueprint("main", __name__)
 ALLOWED_VIDEO_EXT = {".mp4", ".mov", ".m4v", ".webm"}
@@ -376,6 +376,32 @@ def preview_result(job_id):
     return response
 
 
+@main_bp.get("/api/jobs/<job_id>/poster")
+@login_required
+def poster_result(job_id):
+    """Poster do vídeo final para evitar preview preto em navegadores mobile."""
+    job = _job_for_user(job_id)
+    if not job.result_key:
+        abort(404)
+
+    poster_key = poster_key_for_result(job.result_key)
+    # Gerações anteriores à v1.7 não possuem poster próprio; nesses casos,
+    # usamos o frame de análise para o usuário nunca ver um retângulo preto.
+    key = poster_key if poster_key and storage.exists(poster_key) else job.frame_key
+    if not key or not storage.exists(key):
+        abort(404)
+
+    if storage.remote:
+        response = redirect(storage.presigned_get(key, expires=600))
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        return response
+
+    data = storage.read_bytes(key)
+    response = send_file(io.BytesIO(data), mimetype="image/jpeg", max_age=0)
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    return response
+
+
 @main_bp.get("/api/jobs/<job_id>/download")
 @login_required
 def download_result(job_id):
@@ -450,7 +476,7 @@ def download_zip():
 @login_required
 def delete_job(job_id):
     job = _job_for_user(job_id)
-    for key in (job.source_key, job.frame_key, job.result_key):
+    for key in (job.source_key, job.frame_key, job.result_key, poster_key_for_result(job.result_key)):
         storage.delete(key)
     db.session.delete(job)
     db.session.commit()

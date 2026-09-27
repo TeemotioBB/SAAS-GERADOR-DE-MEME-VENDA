@@ -8,6 +8,14 @@ from pathlib import Path
 from flask import current_app
 
 
+def poster_key_for_result(result_key: str | None) -> str | None:
+    """Deriva a chave da miniatura JPEG do MP4 final sem exigir nova coluna no banco."""
+    if not result_key:
+        return None
+    base, _sep, _ext = result_key.rpartition(".")
+    return f"{base or result_key}.jpg"
+
+
 class Storage:
     """Storage local em desenvolvimento e S3/R2 em produção.
 
