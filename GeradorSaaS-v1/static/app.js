@@ -54,6 +54,20 @@
     return String(value).replace(/[&<>'"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch]));
   }
 
+  function frameStyle(job) {
+    const w = Number(job.width || 0);
+    const h = Number(job.height || 0);
+    if (!w || !h) return '';
+
+    // IMPORTANTE: o elemento que recebe a caixa de recorte precisa ter
+    // exatamente a mesma proporção do frame analisado. Na primeira versão
+    // SaaS a caixa era posicionada contra o card inteiro; em vídeos verticais
+    // isso criava barras laterais e deslocava visualmente o crop.
+    const maxPreviewHeight = 430;
+    const widthAtMaxHeight = maxPreviewHeight * (w / h);
+    return `aspect-ratio:${w}/${h};width:min(100%,${widthAtMaxHeight.toFixed(2)}px);`;
+  }
+
   function cropStyle(job, crop) {
     if (!crop || !job.width || !job.height) return '';
     return `left:${crop.x/job.width*100}%;top:${crop.y/job.height*100}%;width:${crop.w/job.width*100}%;height:${crop.h/job.height*100}%;`;
@@ -80,11 +94,11 @@
         </div>
         <div class="job-body">
           ${job.has_frame ? `
-            <div class="frame-wrap">
+            <div class="frame-wrap" style="${frameStyle(job)}">
               <img src="/api/jobs/${job.id}/frame?v=${encodeURIComponent(job.updated_at || '')}" alt="Frame">
               ${d.crop && job.width && job.height ? `<div class="crop-box" style="${cropStyle(job,d.crop)}"><div class="crop-handle"></div></div>` : ''}
               <span class="confidence">recorte ${Math.round((job.confidence || 0)*100)}%</span>
-            </div>` : `<div class="frame-wrap"><div class="frame-placeholder">${job.status === 'error' ? 'Não foi possível preparar este vídeo.' : 'Preparando vídeo…'}</div></div>`}
+            </div>` : `<div class="frame-wrap placeholder-wrap"><div class="frame-placeholder">${job.status === 'error' ? 'Não foi possível preparar este vídeo.' : 'Preparando vídeo…'}</div></div>`}
           ${job.error ? `<div class="job-error">${escapeHtml(job.error)}</div>` : ''}
           ${hasResult ? `<video class="result-preview" controls preload="metadata" src="/api/jobs/${job.id}/preview"></video>` : ''}
           <textarea class="job-caption" placeholder="Digite a chamada do vídeo" ${canEdit?'':'disabled'}>${escapeHtml(d.caption)}</textarea>
