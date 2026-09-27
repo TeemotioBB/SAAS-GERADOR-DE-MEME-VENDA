@@ -15,10 +15,17 @@
   const generateAllBtn = document.getElementById('generateAllBtn');
   const downloadZipBtn = document.getElementById('downloadZipBtn');
   const usageCount = document.getElementById('usageCount');
+  const generationModal = document.getElementById('generationModal');
+  const generationModalTitle = document.getElementById('generationModalTitle');
+  const generationModalMessage = document.getElementById('generationModalMessage');
+  const generationModalStatus = document.getElementById('generationModalStatus');
+  const generationModalIcon = document.getElementById('generationModalIcon');
+  const generationModalAction = document.getElementById('generationModalAction');
 
   const jobs = new Map();
   const drafts = new Map();
   let pollTimer = null;
+  let generationTrackedIds = new Set();
 
   function ensureDraft(job) {
     if (!drafts.has(job.id)) {
@@ -194,13 +201,24 @@
     handle?.addEventListener('pointerdown', e => begin(e,true));
   }
 
-  async function refreshJobs() {
-    try {
-      const data = await api('/api/jobs');
-      data.jobs.forEach(j => jobs.set(j.id,j));
-      for (const id of [...jobs.keys()]) if (!data.jobs.find(j => j.id === id)) jobs.delete(id);
+  async function refreshVisibleJobs() {
+    const ids = [...jobs.keys()];
+    if (!ids.length) {
+      clearTimeout(pollTimer);
       renderJobs();
-      const active = data.jobs.some(j => ['queued','importing','analyzing','rendering'].includes(j.status));
+      refreshUsage();
+      return;
+    }
+
+    try {
+      const results = await Promise.allSettled(ids.map(id => api(`/api/jobs/${id}`)));
+      results.forEach((result, index) => {
+        if (result.status === 'fulfilled') jobs.set(ids[index], result.value);
+        else console.warn(`Falha ao atualizar job ${ids[index]}:`, result.reason);
+      });
+      renderJobs();
+      updateGenerationModal();
+      const active = [...jobs.values()].some(j => ['queued','importing','analyzing','rendering'].includes(j.status));
       if (active) schedulePoll(2200); else clearTimeout(pollTimer);
       refreshUsage();
     } catch (e) {
@@ -211,8 +229,88 @@
 
   function schedulePoll(ms=2500) {
     clearTimeout(pollTimer);
-    pollTimer = setTimeout(refreshJobs, ms);
+    pollTimer = setTimeout(refreshVisibleJobs, ms);
   }
+
+  function showGenerationModal(ids) {
+    generationTrackedIds = new Set(ids);
+    if (!generationModal) return;
+    const count = ids.length;
+    generationModal.classList.add('is-open');
+    generationModal.setAttribute('aria-hidden', 'false');
+    generationModal.classList.remove('is-done', 'is-error');
+    if (generationModalTitle) generationModalTitle.textContent = count > 1 ? `Gerando ${count} vídeos…` : 'Gerando vídeo…';
+    if (generationModalMessage) generationModalMessage.textContent = count > 1
+      ? 'Os vídeos foram enviados para processamento. Você pode continuar usando a página enquanto eles são preparados.'
+      : 'Seu vídeo foi enviado para processamento. Você pode continuar usando a página enquanto ele é preparado.';
+    if (generationModalStatus) generationModalStatus.textContent = 'Iniciando processamento…';
+    if (generationModalAction) generationModalAction.textContent = 'Continuar usando';
+    if (generationModalIcon) generationModalIcon.innerHTML = '<span class="generation-spinner"></span>';
+  }
+
+  function setGenerationModalError(message) {
+    if (!generationModal) return;
+    generationModal.classList.add('is-open', 'is-error');
+    generationModal.classList.remove('is-done');
+    generationModal.setAttribute('aria-hidden', 'false');
+    if (generationModalTitle) generationModalTitle.textContent = 'Não foi possível iniciar a geração';
+    if (generationModalMessage) generationModalMessage.textContent = message || 'Ocorreu um erro ao enviar o vídeo para processamento.';
+    if (generationModalStatus) generationModalStatus.textContent = 'Revise as informações e tente novamente.';
+    if (generationModalAction) generationModalAction.textContent = 'Fechar';
+    if (generationModalIcon) generationModalIcon.textContent = '!';
+  }
+
+  function updateGenerationModal() {
+    if (!generationModal?.classList.contains('is-open') || !generationTrackedIds.size) return;
+    const tracked = [...generationTrackedIds].map(id => jobs.get(id)).filter(Boolean);
+    if (!tracked.length) return;
+
+    const done = tracked.filter(j => j.status === 'done').length;
+    const errors = tracked.filter(j => j.status === 'error').length;
+    const rendering = tracked.filter(j => ['queued','rendering'].includes(j.status)).length;
+
+    if (done === tracked.length) {
+      generationModal.classList.add('is-done');
+      generationModal.classList.remove('is-error');
+      if (generationModalTitle) generationModalTitle.textContent = tracked.length > 1 ? 'Vídeos prontos!' : 'Vídeo pronto!';
+      if (generationModalMessage) generationModalMessage.textContent = tracked.length > 1
+        ? 'As gerações foram concluídas. Os botões de download já estão disponíveis nos vídeos.'
+        : 'A geração foi concluída. O botão de download já está disponível no vídeo.';
+      if (generationModalStatus) generationModalStatus.textContent = `${done}/${tracked.length} concluído${tracked.length > 1 ? 's' : ''}.`;
+      if (generationModalAction) generationModalAction.textContent = 'Fechar';
+      if (generationModalIcon) generationModalIcon.textContent = '✓';
+      return;
+    }
+
+    if (errors && done + errors === tracked.length) {
+      generationModal.classList.add('is-error');
+      generationModal.classList.remove('is-done');
+      if (generationModalTitle) generationModalTitle.textContent = 'Geração finalizada com erro';
+      if (generationModalMessage) generationModalMessage.textContent = tracked.length > 1
+        ? `${errors} vídeo(s) apresentaram erro. Confira os cartões para ver os detalhes.`
+        : 'O vídeo apresentou um erro durante a geração. Confira o cartão para ver os detalhes.';
+      if (generationModalStatus) generationModalStatus.textContent = `${done} concluído(s), ${errors} com erro.`;
+      if (generationModalAction) generationModalAction.textContent = 'Fechar';
+      if (generationModalIcon) generationModalIcon.textContent = '!';
+      return;
+    }
+
+    if (generationModalStatus) {
+      const current = done + errors;
+      generationModalStatus.textContent = tracked.length > 1
+        ? `${current}/${tracked.length} finalizado(s) · ${rendering} em processamento.`
+        : 'Processando o vídeo…';
+    }
+  }
+
+  function hideGenerationModal() {
+    if (!generationModal) return;
+    generationModal.classList.remove('is-open');
+    generationModal.setAttribute('aria-hidden', 'true');
+  }
+
+  generationModal?.querySelectorAll('[data-close-generation-modal]').forEach(el => el.addEventListener('click', hideGenerationModal));
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') hideGenerationModal(); });
 
   async function refreshUsage() {
     try {
@@ -262,8 +360,9 @@
     } catch(e) { alert(e.message); if(btn){btn.disabled=false;btn.textContent='Reler texto';} }
   }
 
-  async function generate(id) {
+  async function generate(id, showNotice=true) {
     const job = jobs.get(id), d = ensureDraft(job);
+    if (showNotice) showGenerationModal([id]);
     try {
       const data = await api(`/api/jobs/${id}/render`, {
         method:'POST',
@@ -277,19 +376,32 @@
           remove_metadata:d.removeMetadata
         })
       });
-      jobs.set(id,data.job); renderJobs(); schedulePoll(1200);
-    } catch(e) { alert(e.message); }
+      jobs.set(id,data.job);
+      renderJobs();
+      updateGenerationModal();
+      schedulePoll(1200);
+      return true;
+    } catch(e) {
+      setGenerationModalError(e.message);
+      return false;
+    }
   }
 
   generateAllBtn?.addEventListener('click', async () => {
     const targets = [...jobs.values()].filter(j => j.status === 'ready');
     if (!targets.length) return alert('Não há vídeos prontos para gerar.');
+    showGenerationModal(targets.map(j => j.id));
     generateAllBtn.disabled=true;
+    let failed = 0;
     for (let i=0;i<targets.length;i++) {
       generateAllBtn.textContent=`Enfileirando ${i+1}/${targets.length}…`;
-      try { await generate(targets[i].id); } catch(_) {}
+      const ok = await generate(targets[i].id, false);
+      if (!ok) failed++;
     }
-    generateAllBtn.textContent='Gerar todos prontos'; generateAllBtn.disabled=false; schedulePoll(1000);
+    generateAllBtn.textContent='Gerar todos prontos';
+    generateAllBtn.disabled=false;
+    if (!failed) updateGenerationModal();
+    schedulePoll(1000);
   });
 
   downloadZipBtn?.addEventListener('click', async () => {
@@ -310,5 +422,9 @@
     catch(e){ alert(e.message); }
   }
 
-  refreshJobs();
+  // A área de trabalho é intencionalmente efêmera. Não carregamos jobs antigos
+  // ao abrir/recarregar a página; apenas os vídeos adicionados nesta sessão da tela
+  // aparecem no grid. O backend mantém os jobs para fila, cota e limpeza.
+  renderJobs();
+  refreshUsage();
 })();

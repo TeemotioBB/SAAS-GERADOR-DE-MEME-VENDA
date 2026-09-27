@@ -21,6 +21,12 @@
     <a class="primary button-link" href="{{ url_for('main.settings') }}">Configurar agora</a>
   </div>
   {% else %}
+  <section class="flow-steps" aria-label="Etapas para criar um vídeo">
+    <div class="flow-step active"><span>1</span><div><strong>Adicione o vídeo</strong><small>Cole o link do Reel ou envie um arquivo.</small></div></div>
+    <div class="flow-step"><span>2</span><div><strong>Revise</strong><small>Confira recorte, chamada e opções.</small></div></div>
+    <div class="flow-step"><span>3</span><div><strong>Gere</strong><small>O vídeo será processado e ficará pronto para baixar.</small></div></div>
+  </section>
+
   <section class="source-grid">
     <div class="panel source-card">
       <div class="source-icon">🔗</div>
@@ -46,7 +52,7 @@
 
   <section class="work-section">
     <div class="section-heading inline-heading">
-      <div><h2>Vídeos</h2><p>Revise o recorte e, se quiser, ajuste a chamada antes de gerar.</p></div>
+      <div><span class="stage-label">ETAPAS 2 E 3</span><h2>Revise e gere seus vídeos</h2><p>Confira o recorte e as opções. A chamada é opcional.</p></div>
       <div class="heading-actions">
         <button id="generateAllBtn" class="secondary" type="button">Gerar todos prontos</button>
         <button id="downloadZipBtn" class="ghost" type="button">Baixar ZIP</button>
@@ -57,10 +63,24 @@
       <strong>Nenhum vídeo ainda.</strong>
       <span>Importe um Reel ou envie um arquivo para começar.</span>
     </div>
+    <div class="workspace-note">ℹ️ Esta área é temporária: ao atualizar a página, os vídeos somem da tela. Processamentos já iniciados continuam no servidor.</div>
   </section>
+
+  <div id="generationModal" class="generation-modal" aria-hidden="true">
+    <div class="generation-modal-backdrop" data-close-generation-modal></div>
+    <div class="generation-modal-card" role="dialog" aria-modal="true" aria-labelledby="generationModalTitle">
+      <button class="generation-modal-close" type="button" aria-label="Fechar" data-close-generation-modal>×</button>
+      <div id="generationModalIcon" class="generation-modal-icon"><span class="generation-spinner"></span></div>
+      <span class="stage-label">ETAPA 3</span>
+      <h3 id="generationModalTitle">Gerando vídeo…</h3>
+      <p id="generationModalMessage">Seu vídeo foi enviado para processamento. Isso pode levar alguns instantes.</p>
+      <div id="generationModalStatus" class="generation-modal-status">Aguarde enquanto o sistema prepara o arquivo.</div>
+      <button id="generationModalAction" class="primary generation-modal-action" type="button" data-close-generation-modal>Continuar usando</button>
+    </div>
+  </div>
   {% endif %}
 </div>
 {% endblock %}
 {% block scripts %}
-{% if brand and brand.configured %}<script src="{{ url_for('static', filename='app.js', v='1.4.0') }}" defer></script>{% endif %}
+{% if brand and brand.configured %}<script src="{{ url_for('static', filename='app.js', v='1.5.0') }}" defer></script>{% endif %}
 {% endblock %}
