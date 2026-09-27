@@ -482,7 +482,12 @@ def _gerar(video_path, caption, output_path, crop=None, uniqueness=None):
     Recorte, cor, grão, velocidade, redimensionamento e template são aplicados
     no mesmo filter_complex. Depois há somente uma passagem de stream copy para
     limpeza profunda, sem perda adicional de qualidade.
+
+    A chamada é opcional. Sem texto, o espaço reservado para a legenda também
+    desaparece: fica apenas o cabeçalho da página, um respiro e o vídeo.
     """
+    caption = str(caption or "")
+    has_caption = bool(caption.strip())
     vw, vh = get_video_size(video_path)
     tem_audio = has_audio(video_path)
     opcoes = _normalizar_opcoes_uniqueness(uniqueness)
@@ -507,18 +512,25 @@ def _gerar(video_path, caption, output_path, crop=None, uniqueness=None):
     f_caption = _font(FONT_BOLD, 44)
     tmp_img = Image.new("RGB", (10, 10))
     tmp_draw = ImageDraw.Draw(tmp_img)
-    lines = wrap_text(caption, f_caption, CANVAS_W - 2 * MARGIN_X, tmp_draw)
-    caption_block_h = len(lines) * 58
+    if has_caption:
+        lines = wrap_text(caption, f_caption, CANVAS_W - 2 * MARGIN_X, tmp_draw)
+        caption_block_h = len(lines) * 58
+        header_to_video_h = GAP_HEADER_CAP + caption_block_h + GAP_CAP_VIDEO
+    else:
+        lines = []
+        caption_block_h = 0
+        # Sem chamada, não deixa um bloco fantasma no meio do layout.
+        header_to_video_h = GAP_CAP_VIDEO
 
     margem_seg = SAFE_MARGIN_Y
 
     altura_disp = CANVAS_H - 2 * margem_seg
 
     def altura_bloco(ch):
-        return AVATAR_SIZE + GAP_HEADER_CAP + caption_block_h + GAP_CAP_VIDEO + ch
+        return AVATAR_SIZE + header_to_video_h + ch
 
     if altura_bloco(card_h) > altura_disp:
-        sobra = AVATAR_SIZE + GAP_HEADER_CAP + caption_block_h + GAP_CAP_VIDEO
+        sobra = AVATAR_SIZE + header_to_video_h
         card_h = max(2, altura_disp - sobra)
         card_w = int(card_h * aspect)
         if card_w > CANVAS_W - 2 * MARGIN_X:
@@ -532,7 +544,7 @@ def _gerar(video_path, caption, output_path, crop=None, uniqueness=None):
 
     bloco_h = altura_bloco(card_h)
     header_y = max(margem_seg, (CANVAS_H - bloco_h) // 2)
-    video_y = header_y + AVATAR_SIZE + GAP_HEADER_CAP + caption_block_h + GAP_CAP_VIDEO
+    video_y = header_y + AVATAR_SIZE + header_to_video_h
 
     overlay, (cx, cy, cw, ch) = build_overlay(
         caption, card_w, card_h, video_y, header_y

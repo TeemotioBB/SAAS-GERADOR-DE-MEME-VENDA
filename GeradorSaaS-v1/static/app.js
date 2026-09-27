@@ -87,7 +87,7 @@
       card.className = 'job-card';
       card.dataset.jobId = job.id;
       const canEdit = ['ready','done','error'].includes(job.status) && !!job.has_frame;
-      const canRender = canEdit && !!d.caption.trim();
+      const canRender = canEdit;
       const hasResult = !!job.has_result;
 
       card.innerHTML = `
@@ -104,7 +104,7 @@
             </div>` : `<div class="frame-wrap placeholder-wrap"><div class="frame-placeholder">${job.status === 'error' ? 'Não foi possível preparar este vídeo.' : 'Preparando vídeo…'}</div></div>`}
           ${job.error ? `<div class="job-error">${escapeHtml(job.error)}</div>` : ''}
           ${hasResult ? `<video class="result-preview" controls preload="metadata" src="/api/jobs/${job.id}/preview?v=${encodeURIComponent(`${job.generation_count || 0}-${job.updated_at || ''}`)}"></video>` : ''}
-          <textarea class="job-caption" placeholder="Digite a chamada do vídeo" ${canEdit?'':'disabled'}>${escapeHtml(d.caption)}</textarea>
+          <textarea class="job-caption" placeholder="Chamada do vídeo (opcional)" ${canEdit?'':'disabled'}>${escapeHtml(d.caption)}</textarea>
           <div class="job-options">
             <label class="option-toggle" title="Remove tags e metadados embutidos do MP4 final">
               <input class="metadata-check" type="checkbox" ${d.removeMetadata?'checked':''}>
@@ -140,7 +140,7 @@
       draft.caption = e.target.value;
       draft.touchedCaption = true;
       const btn = card.querySelector('.generate-one');
-      if (btn) btn.disabled = !draft.caption.trim() || !['ready','done','error'].includes(job.status);
+      if (btn) btn.disabled = !['ready','done','error'].includes(job.status);
     });
     card.querySelector('.logo-check')?.addEventListener('change', e => draft.useLogo = e.target.checked);
     card.querySelector('.extras-check')?.addEventListener('change', e => draft.extraEdits = e.target.checked);
@@ -264,7 +264,6 @@
 
   async function generate(id) {
     const job = jobs.get(id), d = ensureDraft(job);
-    if (!d.caption.trim()) return alert('Digite a legenda/chamada.');
     try {
       const data = await api(`/api/jobs/${id}/render`, {
         method:'POST',
@@ -283,8 +282,8 @@
   }
 
   generateAllBtn?.addEventListener('click', async () => {
-    const targets = [...jobs.values()].filter(j => j.status === 'ready' && ensureDraft(j).caption.trim());
-    if (!targets.length) return alert('Não há vídeos prontos com legenda para gerar.');
+    const targets = [...jobs.values()].filter(j => j.status === 'ready');
+    if (!targets.length) return alert('Não há vídeos prontos para gerar.');
     generateAllBtn.disabled=true;
     for (let i=0;i<targets.length;i++) {
       generateAllBtn.textContent=`Enfileirando ${i+1}/${targets.length}…`;

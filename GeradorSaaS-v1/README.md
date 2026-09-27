@@ -8,8 +8,8 @@ Versão SaaS do seu gerador original. Esta edição foi reorganizada para múlti
 2. Configura **nome da página, @, avatar e logo opcional**.
 3. Cola um ou vários links de Reels **ou envia vídeos do computador/celular**.
 4. O backend baixa/recebe o vídeo, detecta automaticamente o recorte e tenta ler a chamada do frame com Claude.
-5. O usuário pode corrigir o recorte e o texto.
-6. O sistema renderiza usando **o mesmo layout fixo e calibrado para todos os clientes**.
+5. O usuário pode corrigir o recorte e o texto. A chamada é **opcional**.
+6. O sistema renderiza usando **o mesmo layout fixo e calibrado para todos os clientes**; sem chamada, mantém apenas o cabeçalho da página + vídeo.
 7. O usuário baixa o MP4 ou um ZIP.
 
 Não existe editor livre de posição/fonte/template nesta versão. Isso é intencional.
@@ -171,7 +171,7 @@ CLAUDE_API_KEY=...
 AUTO_READ_CAPTION=1
 ```
 
-Se `AUTO_READ_CAPTION=0`, o cliente ainda pode escrever a chamada manualmente. Sem chave, o botão de releitura automática informa que o recurso não está configurado.
+Na v1.4, a leitura automática durante a análise acontece sempre que `CLAUDE_API_KEY` estiver configurada no **Worker**. O botão **Reler texto** usa a chave do **Web**. Se não houver chave, o cliente pode deixar a chamada vazia ou escrever manualmente.
 
 ## Limite de uso
 

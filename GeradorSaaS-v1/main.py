@@ -325,8 +325,9 @@ def render(job_id):
     # Se um navegador antigo não enviar a opção, preserva o comportamento
     # anterior e remove metadados por padrão.
     remove_metadata = data.get("remove_metadata", True) is not False
-    if not caption:
-        return jsonify({"error": "Digite a legenda/chamada."}), 400
+
+    # A chamada é opcional. Quando vazia, o render mantém apenas o cabeçalho
+    # da página (avatar/nome/@), o vídeo e a logo opcional.
 
     # Bloqueia a linha do usuário no PostgreSQL para evitar exceder a cota com cliques concorrentes.
     stmt = select(User).where(User.id == current_user.id).with_for_update()

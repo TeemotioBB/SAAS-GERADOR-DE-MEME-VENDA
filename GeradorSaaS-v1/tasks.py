@@ -76,8 +76,16 @@ def _analyze_local_file(job: MediaJob, source_path: str):
     job.crop = crop
     job.confidence = max(0.0, min(confidence, 1.0))
     job.frame_key = frame_key
-    if app.config.get("AUTO_READ_CAPTION"):
-        job.suggested_caption = extract_caption(frame_bytes)
+
+    # A chamada é lida automaticamente assim que a análise termina.
+    # A leitura é um auxílio: se a API estiver indisponível ou não encontrar
+    # texto, o vídeo continua ficando pronto e pode ser gerado sem chamada.
+    if app.config.get("CLAUDE_API_KEY"):
+        try:
+            job.suggested_caption = extract_caption(frame_bytes)
+        except Exception:
+            job.suggested_caption = ""
+
     job.status = "ready"
     db.session.commit()
 
